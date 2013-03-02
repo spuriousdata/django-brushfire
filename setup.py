@@ -1,7 +1,4 @@
-from distribute_setup import use_setuptools
-use_setuptools()
-
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='django-brushfire',
