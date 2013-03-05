@@ -1,6 +1,6 @@
 from django.core.exceptions import ImproperlyConfigured
 
-class BrshfireExcpetion(Excpetion):
+class BrushfireExcpetion(Exception):
     pass
 
 class BrushfireConfigException(ImproperlyConfigured):
