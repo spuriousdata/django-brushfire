@@ -14,7 +14,7 @@ class BrushfireManager(object):
         setattr(model, 'objects', self)
 
     def get_query_set(self):
-        logger.debug("Called get_query_set()")
+        logger.debug("Called get_query_set(), returning BrushfireQuerySet(self.model)")
         return BrushfireQuerySet(self.model)
 
     def filter(self, *args, **kwargs):

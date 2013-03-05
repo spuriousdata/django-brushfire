@@ -1,7 +1,8 @@
 import httplib2
 import json
 import logging
-from urllib import urlencode as e
+from urllib import  urlencode as e
+from urlparse import parse_qsl as d
 
 URL_LENGTH_MAX = 1024
 DEFAULT = 0xDEFA17
@@ -69,7 +70,8 @@ class Solr(object):
             resp, content = self.conn.request(
                 url.urlpart, method='POST', body=url.qspart)
         else:
-            logger.debug("Requesting %s", url.fullurl)
+            human_url = "&".join(["%s=%s" % (k,v) for k,v in d(url.fullurl)])
+            logger.debug("Requesting %s", human_url)
             resp, content = self.conn.request(url.fullurl)
 
         if resp['status'] != '200':
