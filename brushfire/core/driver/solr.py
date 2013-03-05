@@ -73,8 +73,9 @@ class Solr(object):
             resp, content = self.conn.request(url.fullurl)
 
         if resp['status'] != '200':
-            e = SolrException("Request returned status %d" % resp['status'])
+            e = SolrException("Request returned status %d" % int(resp['status']))
             e.errorbody = content
+            e.url = url.fullurl
             raise e
 
         return content
