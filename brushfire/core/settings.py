@@ -2,7 +2,7 @@ from django.conf import settings
 from brushfire.core.exceptions import BrushfireConfigException
 from django.utils.importlib import import_module
 
-conf = settings.get('BRUSHFIRE', None)
+conf = getattr(settings, 'BRUSHFIRE', None)
 if conf is None:
     raise BrushfireConfigException("`BRUSHFIRE` dict must be present in settings module")
 
@@ -47,15 +47,15 @@ class Configuration(object):
     def __init__(self, c):
         self.c = c
         self.__set('host')
-        self.__set('query_core', 'cores.query', '') 
-        self.__set('default_handler', 'handlers.default', 'select') 
-        self.__set('default_lparams', 'query.lparams', '') 
+        self.__set('query_core', 'cores.query', False, '') 
+        self.__set('default_handler', 'handlers.default', False, 'select') 
+        self.__set('default_lparams', 'query.lparams', False, '') 
         self.set_query_cache()
 
     def set_query_cache(self):
         c = self.get('cache.method', False)
         if c is None:
-            return
+            self.query_cache = None
         else:
             if c not in ('file', 'django'):
                 self.query_cache = import_module(c)()
@@ -70,7 +70,7 @@ class Configuration(object):
             dict_key = property
         value = None
         try:
-            value = self.get(dict_key, required)
+            value = self.get(dict_key, required, default)
         except BrushfireConfigException as e:
             if default is not None:
                 value = default
@@ -78,7 +78,7 @@ class Configuration(object):
                 raise
         setattr(self, property, value)
 
-    def get(self, dict_key, required=True, default=None)
+    def get(self, dict_key, required=True, default=None):
         value = self.c
         try:
             keypath = dict_key.split('.')
@@ -98,7 +98,7 @@ class Configuration(object):
             self.host,
             self.query_core,
             self.default_handler,
-            self.default_lparmas,
+            self.default_lparams,
             self.query_cache,
         )
         return self.solr_conn
