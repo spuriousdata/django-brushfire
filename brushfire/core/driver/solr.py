@@ -90,6 +90,12 @@ class Url(object):
     def rightside(self):
         return self.path + self.qs
 
+    def humanize(self):
+        return "&".join(["%s=%s" % (k,v) for k,v in d(self.fullurl)])
+
+    def __repr__(self):
+        return humanize()
+
 class SolrException(Exception):
     def __init__(self, msg, type="Unknown"):
         self.type = type
@@ -113,16 +119,16 @@ class Solr(object):
         qs = "?%s" % e(query) if len(query) else ''
         return Url(self.solr, path, qs)
 
+
     def _raw(self, path, **kwargs):
         url = self._url(path, kwargs)
 
         if len(url.rightside) > URL_LENGTH_MAX:
-            logger.debug("Requesting %s with body: %s", url.urlpart, url.qspart)
+            logger.debug("Requesting %s with body: %s", url, url.qspart)
             resp, content = self.conn.request(
                 url.urlpart, method='POST', body=url.qspart)
         else:
-            human_url = "&".join(["%s=%s" % (k,v) for k,v in d(url.fullurl)])
-            logger.debug("Requesting %s", human_url)
+            logger.debug("Requesting %s", url)
             resp, content = self.conn.request(url.fullurl)
 
         if resp['status'] != '200':
