@@ -3,62 +3,11 @@ import json
 import logging
 from urllib import  urlencode as e
 from urlparse import parse_qsl as d
-from django.utils.tree import Node
-from django.db.models.sql.where import AND, OR, WhereNode
-from django.core.exceptions import FieldError
 
 URL_LENGTH_MAX = 1024
 DEFAULT = 0xDEFA17
 
 logger = logging.getLogger('brushfire.driver.solr')
-
-class SolrQuery(object):
-    def __init__(self, q="", model=None):
-        self.querystring = q
-        self.model = model
-        self.query_terms = []
-        self.start = None
-        self.stop = None
-        self.where = WhereNode()
-    
-    def clone(self):
-        q = Query(self.querystring, self.model)
-        q.query_terms = self.query_terms
-        q.start = self.start
-        q.stop = self.stop
-        q.where = self.where
-        return q
-
-    def set_limits(self, start, stop):
-        logger.debug("Called Query.set_limits(%d, %d)", start, stop)
-        self.start = start
-        self.stop = stop
-
-    def get_querystring(self):
-        return self.querystring
-
-    def can_filter(self):
-        return True
-
-    def add_q(self, q):
-        clause = self._add_q(q)
-        self.where.add(clause, AND)
-
-    def _add_q(self, q, used_aliases=None, branch_negated=False, current_negated=False):
-        import pdb; pdb.set_trace() 
-        connector = q.connector
-        current_negated = current_negated ^ q.negated
-        branch_negated = branch_negated or q.negated
-        where = WhereNode(connector=connector, negated=q.negated)
-
-        for child in q.children:
-            if isinstance(child, Node):
-                child_clause = self._add_q(child, used_aliases, branch_negated, current_negated)
-            else:
-                child_clause = child
-            where.add(child_clause, connector)
-        return where
-
 
 class Url(object):
     def __init__(self, start, path, qs):
@@ -94,7 +43,7 @@ class Url(object):
         return "&".join(["%s=%s" % (k,v) for k,v in d(self.fullurl)])
 
     def __repr__(self):
-        return humanize()
+        return self.humanize()
 
 class SolrException(Exception):
     def __init__(self, msg, type="Unknown"):
