@@ -85,7 +85,7 @@ class SolrQuery(object):
             'startswith': u'%s*',
             'endswith': u'*%s',
         }
-        
+
         if type(value) in (set, list, tuple) and len(value) == 1:
             value = value[0]
 
