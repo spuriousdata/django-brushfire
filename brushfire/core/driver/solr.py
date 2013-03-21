@@ -1,6 +1,7 @@
 import httplib2
 import json
 import logging
+import re
 from urllib import  urlencode as e
 from urlparse import parse_qsl as d
 
@@ -40,10 +41,16 @@ class Url(object):
         return self.path + self.qs
 
     def humanize(self):
-        return "&".join(["%s=%s" % (k,v) for k,v in d(self.fullurl)])
+        return self.urlpart + "?" + "&".join(["%s=%s" % (k,v) for k,v in d(self.qspart)])
 
     def __repr__(self):
         return self.humanize()
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __unicode__(self):
+        return self.__repr__()
 
 class SolrException(Exception):
     def __init__(self, msg, type="Unknown"):
@@ -55,6 +62,7 @@ class SolrResponseException(SolrException):
         super(SolrResponseException, self).__init__(msg, "Response Error")
 
 class Solr(object):
+    sort_regex = re.compile('(\+|-)?(.*)')
     def __init__(self, server, core='', query_handler='select', lparams='',
             cache=None, fields='*.score', rows=20):
         self.solr = server
@@ -75,11 +83,11 @@ class Solr(object):
         url = self._url(path, kwargs)
 
         if len(url.rightside) > URL_LENGTH_MAX:
-            logger.debug("Requesting %s with body: %s", url, url.qspart)
+            logger.debug("Requesting[POST] %s with body: %s", url, url.qspart)
             resp, content = self.conn.request(
                 url.urlpart, method='POST', body=url.qspart)
         else:
-            logger.debug("Requesting %s", url)
+            logger.debug("Requesting[GET] %s", url)
             resp, content = self.conn.request(url.fullurl)
 
         if resp['status'] != '200':
@@ -92,7 +100,7 @@ class Solr(object):
         return content
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
-               handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, **kwargs):
+               handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, sort=[], **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
         if core == DEFAULT:
@@ -104,6 +112,12 @@ class Solr(object):
         if rows == DEFAULT:
             rows = self.rows
 
+        # turn ['+foo', '-bar', 'baz'] into "foo asc,bar desc,baz asc"
+        sort = ','.join(
+                ["%s asc" % field if direction in (None, '+') else "%s desc" % field 
+                    for direction, field in [
+                        Solr.sort_regex.search(x).groups() for x in sort]])
+
         path = "%s/%s" % (core, handler)
         q = {
             'q': lparams+query,
@@ -111,7 +125,9 @@ class Solr(object):
             'fl': fields,
             'rows': rows,
             'start': start,
+            'sort': sort,
         }
+
         q.update(kwargs)
         response = self._raw(path, **q)
         if raw:

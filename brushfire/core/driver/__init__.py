@@ -53,12 +53,27 @@ class SolrQuery(object):
         self.low_mark = 0
         self.high_mark = None
         self.where = SearchNode()
+        self.ordering = []
+        self.fields = ['*', 'score']
+
+    def set_fields(self, *fields):
+        self.fields = list(fields) + ['score']
+
+    def clear_ordering(self):
+        self.ordering = []
+        return self
+
+    def add_ordering(self, *order):
+        self.ordering += order
+        return self
 
     def clone(self):
         q = SolrQuery(self.model)
         q.low_mark = self.low_mark
         q.high_mark = self.high_mark
         q.where = copy.deepcopy(self.where)
+        q.ordering = self.ordering[:]
+        q.fields = self.fields[:]
         return q
 
     def set_limits(self, low=None, high=None):
@@ -90,14 +105,32 @@ class SolrQuery(object):
             qs = "*:*"
         return qs
 
+    def get_full_query(self):
+        """
+        debug use only
+        """
+        return "q=" + self.get_querystring() + '&' + '&'.join(
+                ["%s=%s" % (k,v) for k,v in self.get_query_params().items()])
+
+    def get_query_params(self):
+        return {
+            'start':self.start(), 
+            'rows':self.rows(), 
+            'fields':','.join(self.fields), 
+            'sort':self.ordering,
+        }
+
+    def start(self):
+        return self.low_mark or 0
+
+    def rows(self):
+        return (self.high_mark or 10) - self.start()
+
     def run(self):
         logging.debug("running")
-        start = self.low_mark or 0
-        rows = (self.high_mark or 10) - start
         return conf.solr_connection.search(
             self.get_querystring(),
-            start=start,
-            rows=rows,
+            **self.get_query_params()
         )
 
     def build_query_fragment(self, field, filter_type, value):
