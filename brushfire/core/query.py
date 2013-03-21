@@ -44,6 +44,7 @@ class BrushfireQuerySet(QuerySet):
 
 
     def _filter_or_exclude(self, negate, *args, **kwargs):
+        logger.debug("Called filter or exclude with (%s, %r, %r)", negate, args, kwargs)
         if args or kwargs:
             assert self.query.can_filter(), \
                     "Cannot filter a query once a slice has been taken."
