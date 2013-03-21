@@ -12,3 +12,4 @@ else:
 
 
 solr = conf.configure_solr(driver)
+conf.set_solr(solr)

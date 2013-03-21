@@ -1,8 +1,5 @@
-from brushfire import solr
 from brushfire.core.driver import SolrQuery, SQ
-from brushfire.core.settings import configuration as conf
 from django.db.models.query import QuerySet
-from django.utils.tree import Node
 
 import logging
 logger = logging.getLogger('brushfire.core.query')
@@ -22,8 +19,9 @@ class BrushfireQuerySet(QuerySet):
         """
         return clone
 
+
     def iterator(self):
-        results = solr.search(self.query.get_querystring()).get('response', {})
+        results = self.query.run().get('response', {})
         for x in results['docs']:
             obj = self.model()
             for k,v in x.items():

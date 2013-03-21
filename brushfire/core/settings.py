@@ -39,6 +39,7 @@ BRUSHFIRE = {
     'query': {
         'fields': '*,score',
         'lparams': "{!edismax qf='text^2 name^100' bf='name'}",
+        'rows': 20,
     },
 }
 """
@@ -93,6 +94,9 @@ class Configuration(object):
         else:
             return value
 
+    def set_solr(self, solr):
+        setattr(self, 'solr_connection', solr)
+
     def configure_solr(self, solr):
         self.solr_conn = solr(
             self.host,
@@ -100,6 +104,8 @@ class Configuration(object):
             self.default_handler,
             self.default_lparams,
             self.query_cache,
+            self.get('query.fields', False, '*,score'),
+            self.get('query.rows', False, 20),
         )
         return self.solr_conn
 

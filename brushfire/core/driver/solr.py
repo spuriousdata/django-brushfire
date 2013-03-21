@@ -55,13 +55,15 @@ class SolrResponseException(SolrException):
         super(SolrResponseException, self).__init__(msg, "Response Error")
 
 class Solr(object):
-    def __init__(self, server, core='', 
-                 query_handler='select', lparams='', cache=None):
+    def __init__(self, server, core='', query_handler='select', lparams='',
+            cache=None, fields='*.score', rows=20):
         self.solr = server
         self.default_core = core
         self.conn = httplib2.Http(cache)
         self.query_handler = query_handler
         self.lparams = lparams
+        self.fields = fields
+        self.rows = rows
 
     def _url(self, path, query):
         path = path if path.startswith('/') else "/%s" % path
@@ -84,12 +86,13 @@ class Solr(object):
             e = SolrException("Request returned status %d" % int(resp['status']))
             e.errorbody = content
             e.url = url.fullurl
+            logger.exception(e)
             raise e
 
         return content
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
-               handler=DEFAULT, core=DEFAULT, raw=False, **kwargs):
+               handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
         if core == DEFAULT:
@@ -97,13 +100,17 @@ class Solr(object):
         if lparams == DEFAULT:
             lparams = self.lparams
         if fields == DEFAULT:
-            fields = '*,score'
+            fields = self.fields
+        if rows == DEFAULT:
+            rows = self.rows
 
         path = "%s/%s" % (core, handler)
         q = {
             'q': lparams+query,
-            'wt': 'json',
+            'wt': 'json', # Should this be overridable?
             'fl': fields,
+            'rows': rows,
+            'start': start,
         }
         q.update(kwargs)
         response = self._raw(path, **q)

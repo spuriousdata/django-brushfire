@@ -1,8 +1,10 @@
 import logging
+import copy
 from django.utils.tree import Node
 from django.db.models import Q
 from django.db.models.sql.constants import LOOKUP_SEP
 from brushfire.core.driver.solr import *
+from brushfire.core.settings import configuration as conf
 
 QUERY_TERMS = set([
     'exact', 'contains', 'gt', 'gte', 'lt', 'lte', 'in',
@@ -28,7 +30,7 @@ class SearchNode(Node):
         query_string = conn.join(result)
         if query_string:
             if self.negated:
-                query_string = 'NOT (%s)' % query_string
+                query_string = '-(%s)' % query_string # this doesn't work right (QS.exclude())
             elif len(self.children) != 1:
                 query_string = '(%s)' % query_string
         return query_string
@@ -48,29 +50,55 @@ class SQ(Q, SearchNode):
 class SolrQuery(object):
     def __init__(self, model=None):
         self.model = model
-        self.query_terms = []
-        self.start = None
-        self.stop = None
+        self.low_mark = 0
+        self.high_mark = None
         self.where = SearchNode()
 
     def clone(self):
         q = SolrQuery(self.model)
-        q.query_terms = self.query_terms
-        q.start = self.start
-        q.stop = self.stop
-        q.where = self.where
+        q.low_mark = self.low_mark
+        q.high_mark = self.high_mark
+        q.where = copy.deepcopy(self.where)
         return q
 
-    def set_limits(self, start, stop):
-        logger.debug("Called Query.set_limits(%r, %r)", start, stop)
-        self.start = start
-        self.stop = stop
+    def set_limits(self, low=None, high=None):
+        """
+        Adjusts the limits on the rows retrieved. We use low/high to set these,
+        as it makes it more Pythonic to read and write. When the SQL query is
+        created, they are converted to the appropriate offset and limit values.
+
+        Any limits passed in here are applied relative to the existing
+        constraints. So low is added to the current low value and both will be
+        clamped to any existing high value.
+        """
+        logger.debug("Called set_limits(%r, %r)", low, high)
+        if high is not None:
+            if self.high_mark is not None:
+                self.high_mark = min(self.high_mark, self.low_mark + high)
+            else:
+                self.high_mark = self.low_mark + high
+        if low is not None:
+            if self.high_mark is not None:
+                self.low_mark = min(self.high_mark, self.low_mark + low)
+            else:
+                self.low_mark = self.low_mark + low
+
 
     def get_querystring(self):
         qs = self.where.as_query_string(self.build_query_fragment)
         if not qs:
             qs = "*:*"
         return qs
+
+    def run(self):
+        logging.debug("running")
+        start = self.low_mark or 0
+        rows = (self.high_mark or 10) - start
+        return conf.solr_connection.search(
+            self.get_querystring(),
+            start=start,
+            rows=rows,
+        )
 
     def build_query_fragment(self, field, filter_type, value):
         fragment = ''
@@ -98,7 +126,24 @@ class SolrQuery(object):
         return fragment
 
     def can_filter(self):
-        return True
+        return not self.low_mark and self.high_mark is None
+
+    def clear_limits(self):
+        self.low_mark, self.high_mark = 0, None
+
+    def prepare(self):
+        return self
+
+    def get_meta(self):
+        return self.model._meta
+
+    def get_count(self, *args, **kwargs):
+        clone = self.clone()
+        try:
+            count = int(clone.run()['response']['numFound'])
+        except:
+            count = 0
+        return count
 
     def add_q(self, q, connector=SQ.AND):
 
