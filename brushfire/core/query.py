@@ -26,11 +26,15 @@ class BrushfireQuerySet(QuerySet):
             pass
         return super(BrushfireQuerySet, self)._clone(klass, setup, **kwargs)
 
-    def values(self, *fields):
-        clone = self._clone(BrushfireValuesQuerySet)
+    def values(self, *fields, **kwargs):
+        klass = kwargs.pop('klass', BrushfireValuesQuerySet)
+        clone = self._clone(klass)
         clone.query.set_fields(*fields)
         setattr(clone, 'return_fields', fields)
         return clone
+
+    def values_obj(self, *fields):
+        return self.values(*fields, klass=BrushfireValuesObjectQuerySet)
 
     def iterator(self):
         results = self.query.run().get('response', {})
@@ -64,3 +68,19 @@ class BrushfireValuesQuerySet(BrushfireQuerySet):
                 if k in self.return_fields:
                     obj[k] = v
             yield obj
+
+class BrushfireValuesObjectQuerySet(BrushfireQuerySet):
+    def iterator(self):
+        results = self.query.run().get('response', {})
+        for x in results['docs']:
+            obj = {}
+            for k,v in x.items():
+                if k in self.return_fields:
+                    obj[k] = v
+            yield self.dict_to_object(obj)
+
+    def dict_to_object(self, d):
+        class DictObject(object):
+            def __init__(self, dct):
+                self.__dict__.update(dct)
+        return DictObject(d)
