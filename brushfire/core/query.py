@@ -1,5 +1,6 @@
 from brushfire.core.driver import SolrQuery, SQ
 from django.db.models.query import QuerySet
+from django.utils.datastructures import SortedDict
 
 import logging
 logger = logging.getLogger('brushfire.core.query')
@@ -7,7 +8,7 @@ logger = logging.getLogger('brushfire.core.query')
 class BrushfireQuerySet(QuerySet):
     def __init__(self, model=None, query=None, using=None):
         super(BrushfireQuerySet, self).__init__(model, query, using)
-        self.query = query or SolrQuery("*:*")
+        self.query = query or SolrQuery(model)
 
     def sort(self, *fields):
         return self.order_by(*fields)
@@ -19,6 +20,9 @@ class BrushfireQuerySet(QuerySet):
         clone.query.clear_ordering().add_ordering(*fields)
         return clone
 
+    def count(self):
+        return self.query.get_count()
+
     def _clone(self, klass=None, setup=False, **kwargs):
         try:
             kwargs.update({'return_fields':self.return_fields})
@@ -26,26 +30,30 @@ class BrushfireQuerySet(QuerySet):
             pass
         return super(BrushfireQuerySet, self)._clone(klass, setup, **kwargs)
 
-    def values(self, *fields, **kwargs):
-        klass = kwargs.pop('klass', BrushfireValuesQuerySet)
-        clone = self._clone(klass)
+    def values(self, *fields):
+        clone = self._clone(BrushfireValuesQuerySet)
         clone.query.set_fields(*fields)
-        setattr(clone, 'return_fields', fields)
         return clone
 
     def values_obj(self, *fields):
-        return self.values(*fields, klass=BrushfireValuesObjectQuerySet)
+        clone = self._clone(BrushfireValuesObjectQuerySet)
+        clone.query.set_fields(*fields)
+        return clone
+
+    def values_list(self, *fields):
+        clone = self._clone(BrushfireValuesListQuerySet)
+        clone.query.set_fields(*fields)
+        return clone
 
     def iterator(self):
         results = self.query.run().get('response', {})
         for x in results['docs']:
-            obj = self.model()
-            for k,v in x.items():
-                setattr(obj, k, v)
-                if k == self.model()._meta.pk.name:
-                    setattr(obj, 'pk', v)
-            yield obj
+            yield self.postprocess_result(x)
 
+    def postprocess_result(self, result):
+        keys = set(['foo'] + [x.name for x in self.query.get_meta().fields]) & set(result.keys())
+        r = {k:result[k] for k in keys}
+        return self.model(**r)
 
     def _filter_or_exclude(self, negate, *args, **kwargs):
         logger.debug("Called filter or exclude with (%s, %r, %r)", negate, args, kwargs)
@@ -60,24 +68,19 @@ class BrushfireQuerySet(QuerySet):
         return clone
 
 class BrushfireValuesQuerySet(BrushfireQuerySet):
-    def iterator(self):
-        results = self.query.run().get('response', {})
-        for x in results['docs']:
-            obj = {}
-            for k,v in x.items():
-                if k in self.return_fields:
-                    obj[k] = v
-            yield obj
+    def postprocess_result(self, result):
+        return SortedDict(filter(lambda x: x[0] in self.query.fields and x[0] != 'score', result.items()))
 
-class BrushfireValuesObjectQuerySet(BrushfireQuerySet):
-    def iterator(self):
-        results = self.query.run().get('response', {})
-        for x in results['docs']:
-            obj = {}
-            for k,v in x.items():
-                if k in self.return_fields:
-                    obj[k] = v
-            yield self.dict_to_object(obj)
+class BrushfireValuesListQuerySet(BrushfireValuesQuerySet):
+    def postprocess_result(self, result):
+        return super(BrushfireValuesListQuerySet, self)\
+                .postprocess_result(result).values()
+
+class BrushfireValuesObjectQuerySet(BrushfireValuesQuerySet):
+    def postprocess_result(self, result):
+        return self.dict_to_object(
+                super(BrushfireValuesObjectQuerySet, self)\
+                        .postprocess_result(result))
 
     def dict_to_object(self, d):
         class DictObject(object):

@@ -57,7 +57,10 @@ class SolrQuery(object):
         self.fields = ['*', 'score']
 
     def set_fields(self, *fields):
-        self.fields = list(fields) + ['score']
+        if len(fields) != 0:
+            self.fields = list(fields) + ['score']
+        else:
+            self.fields = [x.name for x in self.model._meta.fields] + ['score']
 
     def clear_ordering(self):
         self.ordering = []
