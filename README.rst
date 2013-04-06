@@ -17,4 +17,4 @@ Brushfire is just the opposite. Brushfire is designed to allow access to all of
 Solr_'s advanced featues at the expense of search server portability.
 
 .. _Solr: http://lucene.apache.org/solr/
-.. _Haystack: http://haystack.org/
+.. _Haystack: http://haystacksearch.org/
