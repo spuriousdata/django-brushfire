@@ -97,15 +97,16 @@ class Configuration(object):
     def set_solr(self, solr):
         setattr(self, 'solr_connection', solr)
 
+
     def configure_solr(self, solr):
         self.solr_conn = solr(
-            self.host,
-            self.query_core,
-            self.default_handler,
-            self.default_lparams,
-            self.query_cache,
-            self.get('query.fields', False, '*,score'),
-            self.get('query.rows', False, 20),
+            server=self.host,
+            core=self.query_core,
+            query_handler=self.default_handler,
+            lparams=self.default_lparams,
+            cache=self.query_cache,
+	        fields=self.get('query.fields', False, '*,score'),
+            rows=self.get('query.rows', False, 20),
         )
         return self.solr_conn
 

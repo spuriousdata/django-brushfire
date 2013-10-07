@@ -54,6 +54,7 @@ class SolrQuery(object):
         self.high_mark = None
         self.where = SearchNode()
         self.ordering = []
+        self.facets = []
         self.fields = ['*', 'score']
 
     def set_fields(self, *fields):
@@ -70,12 +71,21 @@ class SolrQuery(object):
         self.ordering += order
         return self
 
+    def clear_facets(self):
+        self.facets = []
+        return self
+
+    def add_facets(self, *fields):
+        self.facets += fields
+        return self
+
     def clone(self):
         q = SolrQuery(self.model)
         q.low_mark = self.low_mark
         q.high_mark = self.high_mark
         q.where = copy.deepcopy(self.where)
         q.ordering = self.ordering[:]
+        q.facets = self.facets[:]
         q.fields = self.fields[:]
         return q
 
@@ -121,6 +131,7 @@ class SolrQuery(object):
             'rows':self.rows(), 
             'fields':','.join(self.fields), 
             'sort':self.ordering,
+            'facet':self.facets,
         }
 
     def start(self):

@@ -75,6 +75,9 @@ class Solr(object):
 
     def _url(self, path, query):
         path = path if path.startswith('/') else "/%s" % path
+        if query.get('facet'):
+            ff = query.pop('facet.fields')
+            query = query.items() + [('facet.field',x) for x in ff]
         qs = "?%s" % e(query) if len(query) else ''
         return Url(self.solr, path, qs)
 
@@ -100,7 +103,8 @@ class Solr(object):
         return content
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
-               handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, sort=[], **kwargs):
+               handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, 
+               sort=[], facet=[], **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
         if core == DEFAULT:
@@ -119,14 +123,24 @@ class Solr(object):
                         Solr.sort_regex.search(x).groups() for x in sort]])
 
         path = "%s/%s" % (core, handler)
+        f_query = ""
+        if lparams.find("$$QUERY$$") != -1:
+            f_query = lparams.replace("$$QUERY$$", query)
+        else:
+            f_query = lparams+query
         q = {
-            'q': lparams+query,
+            'q': f_query,
             'wt': 'json', # Should this be overridable?
             'fl': fields,
             'rows': rows,
             'start': start,
             'sort': sort,
         }
+        if facet:
+            q.update({
+                'facet':'on',
+                'facet.fields':facet,
+            })
 
         q.update(kwargs)
         response = self._raw(path, **q)
