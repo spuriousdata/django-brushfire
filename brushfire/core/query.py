@@ -5,11 +5,15 @@ from django.utils.datastructures import SortedDict
 import logging
 logger = logging.getLogger('brushfire.core.query')
 
+class ModelLookalikeObject(object):
+    pass
+
 class BrushfireQuerySet(QuerySet):
-    def __init__(self, model, query=None, using=None):
+    def __init__(self, model, query=None, using=None, allow_non_model_fields=False):
         super(BrushfireQuerySet, self).__init__(model, query, using)
         self.query = query or SolrQuery(model)
         self.facet_counts = None
+        self.allow_non_model_fields = allow_non_model_fields
 
     def sort(self, *fields):
         return self.order_by(*fields)
@@ -29,7 +33,9 @@ class BrushfireQuerySet(QuerySet):
             kwargs.update({'return_fields':self.return_fields})
         except AttributeError:
             pass
-        return super(BrushfireQuerySet, self)._clone(klass, setup, **kwargs)
+        clone = super(BrushfireQuerySet, self)._clone(klass, setup, **kwargs)
+        clone.allow_non_model_fields = self.allow_non_model_fields
+        return clone
 
     def facet(self, *fields):
         clone = self._clone()
@@ -73,9 +79,20 @@ class BrushfireQuerySet(QuerySet):
         return ret
 
     def postprocess_result(self, result):
+        pk = self.query.get_meta().pk.column
         keys = set(['foo'] + [x.name for x in self.query.get_meta().fields]) & set(result.keys())
         r = {k:result[k] for k in keys}
-        return self.model(**r)
+        r['pk'] = r[pk]
+        model = self.model(**r)
+        if self.allow_non_model_fields:
+            m = ModelLookalikeObject()
+            m.__dict__.update(model.__dict__)
+            nmf = set(result.keys()) - set(['foo'] + [x.name for x in self.query.get_meta().fields])
+            r = {k:result[k] for k in nmf}
+            m.__dict__.update(r)
+            m.pk = model.pk
+            model = m
+        return model
 
     def narrow_group(self, key, values, connector='OR'):
         qs = None
@@ -110,6 +127,7 @@ class BrushfireQuerySet(QuerySet):
             assert self.query.can_filter(), \
                     "Cannot filter a query once a slice has been taken."
         clone = self._clone()
+
         if negate:
             clone.query.add_q(~SQ(*args, **kwargs))
         else:
