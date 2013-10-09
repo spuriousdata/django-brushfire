@@ -104,7 +104,7 @@ class Solr(object):
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
                handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, 
-               sort=[], facet=[], **kwargs):
+               sort=[], facet=[], fq=None, **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
         if core == DEFAULT:
@@ -141,6 +141,8 @@ class Solr(object):
                 'facet':'on',
                 'facet.fields':facet,
             })
+        if fq:
+            q['fq'] = fq
 
         q.update(kwargs)
         response = self._raw(path, **q)

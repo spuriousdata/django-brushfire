@@ -77,6 +77,33 @@ class BrushfireQuerySet(QuerySet):
         r = {k:result[k] for k in keys}
         return self.model(**r)
 
+    def narrow_group(self, key, values, connector='OR'):
+        qs = None
+        for v in values:
+            if qs is None:
+                qs = SQ(**{key:v})
+            else:
+                if connector == 'OR':
+                    qs = qs | SQ(**{key:v})
+                else:
+                    qs = qs & SQ(**{key:v})
+        clone = self._clone()
+        clone.query.add_q(qs, property='fq')
+        return clone
+
+    def narrow(self, *args, **kwargs):
+        logger.debug("Called narrow with (%r, %r)", args, kwargs)
+        if args or kwargs:
+            assert self.query.can_filter(), \
+                    "Cannot filter a query once a slice has been taken."
+        clone = self._clone()
+
+        if kwargs.pop('__brushfire_connector__', 'AND') != 'AND':
+            clone.query.add_q(SQ(*args, **kwargs), connector=SQ.OR, property='fq')
+        else:
+            clone.query.add_q(SQ(*args, **kwargs), property='fq')
+        return clone
+
     def _filter_or_exclude(self, negate, *args, **kwargs):
         logger.debug("Called filter or exclude with (negate:%s, %r, %r)", negate, args, kwargs)
         if args or kwargs:

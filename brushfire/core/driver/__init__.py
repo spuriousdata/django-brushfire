@@ -53,6 +53,7 @@ class SolrQuery(object):
         self.low_mark = 0
         self.high_mark = None
         self.where = SearchNode()
+        self.fq = SearchNode()
         self.ordering = []
         self.facets = []
         self.fields = ['*', 'score']
@@ -84,6 +85,7 @@ class SolrQuery(object):
         q.low_mark = self.low_mark
         q.high_mark = self.high_mark
         q.where = copy.deepcopy(self.where)
+        q.fq = copy.deepcopy(self.fq)
         q.ordering = self.ordering[:]
         q.facets = self.facets[:]
         q.fields = self.fields[:]
@@ -112,8 +114,9 @@ class SolrQuery(object):
                 self.low_mark = self.low_mark + low
 
 
-    def get_querystring(self):
-        qs = self.where.as_query_string(self.build_query_fragment)
+    def get_querystring(self, property='where'):
+        where = getattr(self, property)
+        qs = where.as_query_string(self.build_query_fragment)
         if not qs:
             qs = "*:*"
         return qs
@@ -122,8 +125,9 @@ class SolrQuery(object):
         """
         debug use only
         """
-        return "q=" + self.get_querystring() + '&' + '&'.join(
-                ["%s=%s" % (k,v) for k,v in self.get_query_params().items()])
+        return "q=" + self.get_querystring() + '&fq=' + \
+                    self.get_querystring(property='fq') + '&' + '&'.join(
+                        ["%s=%s" % (k,v) for k,v in self.get_query_params().items()])
 
     def get_query_params(self):
         return {
@@ -144,6 +148,7 @@ class SolrQuery(object):
         logging.debug("running")
         return conf.solr_connection.search(
             self.get_querystring(),
+            fq=self.get_querystring(property='fq'),
             **self.get_query_params()
         )
 
@@ -192,26 +197,28 @@ class SolrQuery(object):
             count = 0
         return count
 
-    def add_q(self, q, connector=SQ.AND):
+    def add_q(self, q, connector=SQ.AND, property='where'):
 
-        if self.where and q.connector != connector and len(q) > 1:
-            self.where.start_subtree(connector)
+        where = getattr(self, property)
+
+        if where and q.connector != connector and len(q) > 1:
+            where.start_subtree(connector)
             subtree = True
         else:
             subtree = False
 
         for child in q.children:
             if isinstance(child, Node):
-                self.where.start_subtree(connector)
-                self.add_q(child)
-                self.where.end_subtree()
+                where.start_subtree(connector)
+                self.add_q(child, property=property)
+                where.end_subtree()
             else:
                 expression, value = child
-                self.where.add((expression, value), connector)
+                where.add((expression, value), connector)
             connector = q.connector
 
         if q.negated:
-            self.where.negate()
+            where.negate()
 
         if subtree:
-            self.where.end_subtree()
+            where.end_subtree()
