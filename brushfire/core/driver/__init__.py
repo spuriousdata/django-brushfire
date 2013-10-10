@@ -57,6 +57,7 @@ class SolrQuery(object):
         self.ordering = []
         self.facets = []
         self.fields = ['*', 'score']
+        self.extra_params = {}
 
     def set_fields(self, *fields):
         if len(fields) != 0:
@@ -80,6 +81,13 @@ class SolrQuery(object):
         self.facets += fields
         return self
 
+    def clear_extra_params(self):
+        self.extra_params = {}
+        return self
+
+    def add_extra_params(self, d):
+        self.extra_params.update(d)
+
     def clone(self):
         q = SolrQuery(self.model)
         q.low_mark = self.low_mark
@@ -89,6 +97,7 @@ class SolrQuery(object):
         q.ordering = self.ordering[:]
         q.facets = self.facets[:]
         q.fields = self.fields[:]
+        q.extra_params = copy.deepcopy(self.extra_params)
         return q
 
     def set_limits(self, low=None, high=None):
@@ -113,10 +122,15 @@ class SolrQuery(object):
             else:
                 self.low_mark = self.low_mark + low
 
+    def default_search(self, q):
+        self.where = q
 
     def get_querystring(self, property='where'):
         where = getattr(self, property)
-        qs = where.as_query_string(self.build_query_fragment)
+        if isinstance(where, SearchNode):
+            qs = where.as_query_string(self.build_query_fragment)
+        elif isinstance(where, basestring):
+            qs = where
         if not qs:
             qs = "*:*"
         return qs
@@ -130,19 +144,27 @@ class SolrQuery(object):
                         ["%s=%s" % (k,v) for k,v in self.get_query_params().items()])
 
     def get_query_params(self):
-        return {
+        p = {
             'start':self.start(), 
             'rows':self.rows(), 
             'fields':','.join(self.fields), 
             'sort':self.ordering,
             'facet':self.facets,
         }
+        p.update(self.extra_params)
+        return p
 
     def start(self):
         return self.low_mark or 0
 
     def rows(self):
-        return (self.high_mark or 10) - self.start()
+        if self.high_mark:
+            minrows = self.high_mark
+        elif self.get_querystring() == "*:*":
+            minrows = 10
+        else:
+            minrows = self.get_count()
+        return minrows - self.start()
 
     def run(self):
         logging.debug("running")
@@ -200,6 +222,9 @@ class SolrQuery(object):
     def add_q(self, q, connector=SQ.AND, property='where'):
 
         where = getattr(self, property)
+
+        if not isinstance(where, SearchNode):
+            where = SearchNode()
 
         if where and q.connector != connector and len(q) > 1:
             where.start_subtree(connector)
