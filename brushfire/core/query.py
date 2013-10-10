@@ -6,7 +6,8 @@ import logging
 logger = logging.getLogger('brushfire.core.query')
 
 class ModelLookalikeObject(object):
-    pass
+    def __getattr__(self, a):
+        return None
 
 class BrushfireQuerySet(QuerySet):
     def __init__(self, model, query=None, using=None, allow_non_model_fields=False):
@@ -28,6 +29,9 @@ class BrushfireQuerySet(QuerySet):
     def count(self):
         return self.query.get_count()
 
+    def __len__(self):
+        return self.count()
+
     def _clone(self, klass=None, setup=False, **kwargs):
         try:
             kwargs.update({'return_fields':self.return_fields})
@@ -35,6 +39,13 @@ class BrushfireQuerySet(QuerySet):
             pass
         clone = super(BrushfireQuerySet, self)._clone(klass, setup, **kwargs)
         clone.allow_non_model_fields = self.allow_non_model_fields
+        return clone
+
+    def search(self, q, **extra):
+        clone = self._clone()
+        if len(extra):
+            clone.query.add_extra_params(extra)
+        clone.query.default_search(q)
         return clone
 
     def facet(self, *fields):
