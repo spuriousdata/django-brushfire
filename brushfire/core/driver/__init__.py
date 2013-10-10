@@ -191,6 +191,16 @@ class SolrQuery(object):
         if type(value) in (set, list, tuple) and len(value) == 1:
             value = value[0]
 
+        if type(value) in (set, list, tuple):
+            if value[0].find(' ') != -1:
+                value[0] = '"%s"' % value[0]
+
+            if value[1].find(' ') != -1:
+                value[1] = '"%s"' % value[1]
+        else:
+            if value.find(' ') != -1:
+                value = '"%s"' % value
+
         if filter_type not in ('in', 'range'):
             fragment = "%s:%s" % (field, filters[filter_type] % value)
         elif filter_type == 'in':
@@ -213,6 +223,7 @@ class SolrQuery(object):
 
     def get_count(self, *args, **kwargs):
         clone = self.clone()
+        clone.set_limits(high=1) # This must be > 0 -- or self.rows() will infinite loop
         try:
             count = int(clone.run()['response']['numFound'])
         except:
