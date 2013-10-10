@@ -18,7 +18,10 @@ class Url(object):
     
     @property
     def fullurl(self):
-        return self.start + self.path + self.qs
+        qs = ""
+        if self.qs:
+            qs = "?%s" % self.qs
+        return self.start + self.path + qs
 
     @property
     def urlpart(self):
@@ -38,10 +41,17 @@ class Url(object):
 
     @property
     def rightside(self):
-        return self.path + self.qs
+        qs = ""
+        if self.qs:
+            qs = "?%s" % self.qs
+        return self.path + qs
+
+    @property
+    def pretty_qspart(self):
+        return "&".join(["%s=%s" % (k,v) for k,v in d(self.qspart)])
 
     def humanize(self):
-        return self.urlpart + "?" + "&".join(["%s=%s" % (k,v) for k,v in d(self.qspart)])
+        return self.urlpart + "?" + self.pretty_qspart
 
     def __repr__(self):
         return self.humanize()
@@ -78,7 +88,7 @@ class Solr(object):
         if query.get('facet'):
             ff = query.pop('facet.fields')
             query = query.items() + [('facet.field',x) for x in ff]
-        qs = "?%s" % e(query) if len(query) else ''
+        qs = "%s" % e(query) if len(query) else ''
         return Url(self.solr, path, qs)
 
 
@@ -86,9 +96,11 @@ class Solr(object):
         url = self._url(path, kwargs)
 
         if len(url.rightside) > URL_LENGTH_MAX:
-            logger.debug("Requesting[POST] %s with body: %s", url, url.qspart)
+            logger.debug("Requesting[POST] %s with body: %s", url.urlpart, url.pretty_qspart)
             resp, content = self.conn.request(
-                url.urlpart, method='POST', body=url.qspart)
+                    url.urlpart, method='POST', 
+                    headers={'Content-Type':'application/x-www-form-urlencoded'}, 
+                    body=url.qspart)
         else:
             logger.debug("Requesting[GET] %s", url)
             resp, content = self.conn.request(url.fullurl)
