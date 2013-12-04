@@ -8,7 +8,7 @@ from brushfire.core.settings import configuration as conf
 
 QUERY_TERMS = set([
     'exact', 'contains', 'gt', 'gte', 'lt', 'lte', 'in',
-    'startswith', 'endswith', 'range'])
+    'startswith', 'endswith', 'like', 'range'])
 
 logger = logging.getLogger('brushfire.driver.query')
 
@@ -186,6 +186,7 @@ class SolrQuery(object):
             'lte': u'[* TO %s]',
             'startswith': u'%s*',
             'endswith': u'*%s',
+            'like': u'*%s*',
         }
 
         if type(value) in (set, list, tuple) and len(value) == 1:
