@@ -132,6 +132,9 @@ class BrushfireQuerySet(QuerySet):
             clone.query.add_q(SQ(*args, **kwargs), property='fq')
         return clone
 
+    def get(self, *args, **kwargs):
+        return self.filter(*args, **kwargs)[0]
+
     def _filter_or_exclude(self, negate, *args, **kwargs):
         logger.debug("Called filter or exclude with (negate:%s, %r, %r)", negate, args, kwargs)
         if args or kwargs:
