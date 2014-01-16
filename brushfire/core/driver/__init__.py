@@ -114,6 +114,8 @@ class SolrQuery(object):
         clamped to any existing high value.
         """
         logger.debug("Called set_limits(%r, %r)", low, high)
+        if high < 1:
+            raise BrushfireException("Error: set_limits() called with high < 1")
         if high is not None:
             if self.high_mark is not None:
                 self.high_mark = min(self.high_mark, self.low_mark + high)
