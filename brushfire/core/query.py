@@ -54,6 +54,16 @@ class BrushfireQuerySet(QuerySet):
         clone.query.add_facets(*fields)
         return clone
 
+    def tf(self, *fields):
+        """shortcut for term_frequency()"""
+        return self.term_frequency(*fields)
+
+    def term_frequency(self, *fields):
+        """Adds tv.tf to query to return term frequency counts for listed fields"""
+        clone = self._clone()
+        clone.query.add_extra_params({"tv.tf":True,"tv.fl":','.join(fields)})
+        return clone
+
     def values(self, *fields):
         clone = self._clone(BrushfireValuesQuerySet)
         clone.query.set_fields(*fields)
@@ -99,7 +109,7 @@ class BrushfireQuerySet(QuerySet):
         extract term vector information
         this format will (hopefully) change as per [SOLR-2420]
         """
-        if not self.term_vectors:
+        if not self.term_vectors or len(self.term_vectors) != self.query.high_mark:
             q = self.query.clone()
             results = q.run()
             self.docs = results.get('response', {})
