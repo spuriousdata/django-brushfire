@@ -14,6 +14,7 @@ class BrushfireQuerySet(QuerySet):
         super(BrushfireQuerySet, self).__init__(model, query, using)
         self.query = query or SolrQuery(model)
         self.facet_counts = None
+        self.term_vectors = None
         self.allow_non_model_fields = allow_non_model_fields
 
     def sort(self, *fields):
@@ -74,19 +75,53 @@ class BrushfireQuerySet(QuerySet):
         results = self.query.run()
         self.docs = results.get('response', {})
         self.facet_counts = results.get('facet_counts', {})
+        self.term_vectors = results.get('termVectors', [])
 
         for x in self.docs.get('docs', []):
             yield self.postprocess_result(x)
 
     def get_facet_counts(self):
         if not self.facet_counts:
-            results = self.query.run()
+            q = self.query.clone()
+            q.set_limits(high=1)
+            results = q.run()
             self.docs = results.get('response', {})
             self.facet_counts = results.get('facet_counts', {})
+            self.term_vectors = results.get('termVectors', [])
         ret = {}
         ff = self.facet_counts.get('facet_fields', {})
         for key in ff.keys():
             ret[key] = dict(zip(ff[key][::2], ff[key][1::2]))
+        return ret
+
+    def get_term_vectors(self):
+        """
+        extract term vector information
+        this format will (hopefully) change as per [SOLR-2420]
+        """
+        if not self.term_vectors:
+            q = self.query.clone()
+            results = q.run()
+            self.docs = results.get('response', {})
+            self.facet_counts = results.get('facet_counts', {})
+            self.term_vectors = results.get('termVectors', [])
+        ret = {}
+        tvs = self.term_vectors[3::2]
+        for tv in tvs:
+            unique = tv[1]
+            ret[unique] = {}
+            for kvp in zip(tv[2::2], tv[3::2]):
+                fieldname = kvp[0]
+                ret[unique][fieldname] = dict(zip(kvp[1][::2], kvp[1][1::2]))
+                for k in ret[unique][fieldname].keys():
+                    x = ret[unique][fieldname][k]
+                    ret[unique][fieldname][k] = dict(zip(x[::2], x[1::2]))
+                    x = ret[unique][fieldname][k]
+                    if x.get('offsets'):
+                        x['offsets'] = dict(zip(x['offsets'][::2], x['offsets'][1::2]))
+                    if x.get('positions'):
+                        x['positions'] = dict(zip(x['positions'][::2], x['positions'][1::2]))
+                    ret[unique][fieldname][k] = x
         return ret
 
     def postprocess_result(self, result):
