@@ -2,7 +2,10 @@ import logging
 import copy
 from django.utils.tree import Node
 from django.db.models import Q
-from django.db.models.sql.constants import LOOKUP_SEP
+try:
+    from django.db.models.sql.constants import LOOKUP_SEP
+except ImportError:
+    from django.db.models.constants import LOOKUP_SEP
 from brushfire.core.driver.solr import *
 from brushfire.core.settings import configuration as conf
 
