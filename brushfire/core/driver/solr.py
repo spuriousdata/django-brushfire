@@ -88,6 +88,12 @@ class Solr(object):
         if query.get('facet'):
             ff = query.pop('facet.fields')
             query = query.items() + [('facet.field',x) for x in ff]
+        new_query = {}
+        for k,v in query.items():
+            if type(v) is bool:
+                v = "true" if v else "false"
+            new_query[k] = v
+        query = new_query
         qs = "%s" % e(query) if len(query) else ''
         return Url(self.solr, path, qs)
 
