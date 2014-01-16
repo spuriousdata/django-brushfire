@@ -204,12 +204,16 @@ class SolrQuery(object):
             if value[1].find(' ') != -1:
                 value[1] = '"%s"' % value[1]
         else:
+            if type(value) not in (unicode, str):
+                value = str(value)
             if value.find(' ') != -1:
                 value = '"%s"' % value
 
         if filter_type not in ('in', 'range'):
             fragment = "%s:%s" % (field, filters[filter_type] % value)
         elif filter_type == 'in':
+            if type(value) not in (list, tuple):
+                value = [value]
             fragment = "%s:(%s)" % (field, " OR ".join(value))
         elif filter_type == 'range':
             fragment = '%s:["%s" TO "%s"]' % (field, value[0], value[1])
