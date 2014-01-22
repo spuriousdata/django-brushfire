@@ -4,6 +4,7 @@ from django.utils.importlib import import_module
 from brushfire.core.driver import Solr
 from brushfire.core.settings import configuration as conf
 from brushfire.core.query import *
+from brushfire.core import models
 
 driver = conf.get('driver', False, None)
 if driver:

@@ -85,16 +85,22 @@ class Solr(object):
 
     def _url(self, path, query):
         path = path if path.startswith('/') else "/%s" % path
+        if query.get('stats'):
+            sfl = query.pop('stats.fields', [])
+            sft = query.pop('stats.facets', [])
+            query = dict(query.items() + [('stats.field',x) for x in sfl])
+            query = dict(query.items() + [('stats.facet',x) for x in sft])
         if query.get('facet'):
             ff = query.pop('facet.fields')
-            query = query.items() + [('facet.field',x) for x in ff]
-        else:
-            new_query = {}
-            for k,v in query.items():
-                if type(v) is bool:
-                    v = "true" if v else "false"
-                new_query[k] = v
-            query = new_query
+            query = dict(query.items() + [('facet.field',x) for x in ff])
+        # convert True/False to strings
+        new_query = {}
+        for k,v in query.items():
+            if type(v) is bool:
+                v = "true" if v else "false"
+            new_query[k] = v
+        query = new_query
+        # End convert True/False
         qs = "%s" % e(query) if len(query) else ''
         return Url(self.solr, path, qs)
 
@@ -123,7 +129,7 @@ class Solr(object):
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
                handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, 
-               sort=[], facet=[], fq=None, **kwargs):
+               sort=[], facet=[], fq=None, stats=[], stats_facets=[], **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
         if core == DEFAULT:
@@ -160,6 +166,15 @@ class Solr(object):
                 'facet':'on',
                 'facet.fields':facet,
             })
+        if stats:
+            q.update({
+                'stats':'on',
+                'stats.fields':stats,
+            })
+            if stats_facets: # this wont' do anything without stats.fields
+                q.update({
+                    'stats.facets':stats_facets,
+                })
         if fq:
             q['fq'] = fq
 

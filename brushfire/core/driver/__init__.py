@@ -59,6 +59,8 @@ class SolrQuery(object):
         self.fq = SearchNode()
         self.ordering = []
         self.facets = []
+        self.stats = []
+        self.stats_facets = []
         self.fields = ['*', 'score']
         self.extra_params = {}
 
@@ -84,6 +86,22 @@ class SolrQuery(object):
         self.facets += fields
         return self
 
+    def clear_stats(self):
+        self.stats = []
+        return self
+
+    def add_stats(self, *fields):
+        self.stats += fields
+        return self
+
+    def clear_stats_facets(self):
+        self.stats_facets = []
+        return self
+
+    def add_stats_facets(self, *fields):
+        self.stats_facets += fields
+        return self
+
     def clear_extra_params(self):
         self.extra_params = {}
         return self
@@ -99,6 +117,8 @@ class SolrQuery(object):
         q.fq = copy.deepcopy(self.fq)
         q.ordering = self.ordering[:]
         q.facets = self.facets[:]
+        q.stats = self.stats[:]
+        q.stats_facets = self.stats_facets[:]
         q.fields = self.fields[:]
         q.extra_params = copy.deepcopy(self.extra_params)
         return q
@@ -114,6 +134,11 @@ class SolrQuery(object):
         clamped to any existing high value.
         """
         logger.debug("Called set_limits(%r, %r)", low, high)
+
+        # XXX:
+        # This is a shitty hack. Setting high=0 causes an infinite loop, but I
+        # don't know why. You _should_ be able to use &rows=0 in solr to get
+        # back metadata about the result set (like result count)
         if high < 1:
             high = 1
         if high is not None:
@@ -155,6 +180,8 @@ class SolrQuery(object):
             'fields':','.join(self.fields), 
             'sort':self.ordering,
             'facet':self.facets,
+            'stats':self.stats,
+            'stats_facets':self.stats_facets,
         }
         p.update(self.extra_params)
         return p

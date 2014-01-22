@@ -15,6 +15,7 @@ class BrushfireQuerySet(QuerySet):
         self.query = query or SolrQuery(model)
         self.facet_counts = None
         self.term_vectors = None
+        self.stats = None
         self.allow_non_model_fields = allow_non_model_fields
 
     def sort(self, *fields):
@@ -64,6 +65,15 @@ class BrushfireQuerySet(QuerySet):
         clone.query.add_extra_params({"tv.tf":True,"tv.fl":','.join(fields)})
         return clone
 
+    def stat(self, *fields, **kwargs):
+        """Adds stats.field and optionally stats.facet to query to return term
+        frequency counts for listed fields"""
+        clone = self._clone()
+        clone.query.add_stats(*fields)
+        if kwargs.get('facet', None):
+            clone.query.add_stats_facets(*kwargs.get('facet'))
+        return clone
+
     def values(self, *fields):
         clone = self._clone(BrushfireValuesQuerySet)
         clone.query.set_fields(*fields)
@@ -81,11 +91,21 @@ class BrushfireQuerySet(QuerySet):
         clone.query.set_fields(*fields)
         return clone
 
+    def _cache_response(self, results, updateonly=[]):
+        if updateonly:
+            if type(updateonly) not in (list, tuple, set):
+                updateonly = [updateonly]
+            for f in updateonly:
+                setattr(self, f, results.get(f))
+        else:
+            self.docs = results.get('response', {})
+            self.facet_counts = results.get('facet_counts', {})
+            self.term_vectors = results.get('termVectors', [])
+            self.stats = results.get('stats', {})
+
     def iterator(self):
         results = self.query.run()
-        self.docs = results.get('response', {})
-        self.facet_counts = results.get('facet_counts', {})
-        self.term_vectors = results.get('termVectors', [])
+        self._cache_response(self.query.run())
 
         for x in self.docs.get('docs', []):
             yield self.postprocess_result(x)
@@ -94,10 +114,7 @@ class BrushfireQuerySet(QuerySet):
         if not self.facet_counts:
             q = self.query.clone()
             q.set_limits(high=1)
-            results = q.run()
-            self.docs = results.get('response', {})
-            self.facet_counts = results.get('facet_counts', {})
-            self.term_vectors = results.get('termVectors', [])
+            self._cache_response(q.run())
         ret = {}
         ff = self.facet_counts.get('facet_fields', {})
         for key in ff.keys():
@@ -111,10 +128,7 @@ class BrushfireQuerySet(QuerySet):
         """
         if not self.term_vectors or len(self.term_vectors) != self.query.high_mark:
             q = self.query.clone()
-            results = q.run()
-            self.docs = results.get('response', {})
-            self.facet_counts = results.get('facet_counts', {})
-            self.term_vectors = results.get('termVectors', [])
+            self._cache_response(q.run())
         ret = {}
         tvs = self.term_vectors[3::2]
         for tv in tvs:
@@ -133,6 +147,19 @@ class BrushfireQuerySet(QuerySet):
                         x['positions'] = dict(zip(x['positions'][::2], x['positions'][1::2]))
                     ret[unique][fieldname][k] = x
         return ret
+
+    def get_stats(self, force=False):
+        if not self.stats or force:
+            q = self.query.clone()
+            self._cache_response(q.run(), updateonly='stats')
+        stats = {}
+        for field in self.stats['stats_fields'].keys():
+            try:
+                stats[field] = Stats(field, **self.stats['stats_fields'][field])
+            except:
+                # there were no stats for the field
+                pass
+        return stats
 
     def postprocess_result(self, result):
         pk = self.query.get_meta().pk.column
@@ -193,6 +220,11 @@ class BrushfireQuerySet(QuerySet):
             clone.query.add_q(SQ(*args, **kwargs))
         return clone
 
+################################################################################
+#
+#                              QuerySet subtypes
+#
+################################################################################
 class BrushfireValuesQuerySet(BrushfireQuerySet):
     def postprocess_result(self, result):
         return SortedDict(filter(lambda x: x[0] in self.query.fields and x[0] != 'score', result.items()))
@@ -211,3 +243,29 @@ class BrushfireValuesObjectQuerySet(BrushfireValuesQuerySet):
             def __init__(self, dct):
                 self.__dict__.update(dct)
         return DictObject(d)
+
+################################################################################
+#
+#                                   Helpers
+#
+################################################################################
+class Stats(object):
+    def __init__(self, name, min, max, count, missing, sum, sumOfSquares, mean, stddev, facets={}):
+        self.name = name
+        self.min = min
+        self.max = max
+        self.count = count
+        self.missing = missing
+        self.sum = sum
+        self.sumsq = sumOfSquares
+        self.mean = mean
+        self.stddev = stddev
+        self.facets = {}
+        for facet_field in facets.keys():
+            for facet in facets[facet_field].keys():
+                if self.facets.get(facet_field, None):
+                    self.facets[facet_field][facet] = Stats(facet, **facets[facet_field][facet])
+                else:
+                    self.facets[facet_field] = {}
+                    self.facets[facet_field][facet] = Stats(facet, **facets[facet_field][facet])
+
