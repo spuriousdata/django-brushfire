@@ -110,10 +110,18 @@ class Solr(object):
 
         if len(url.rightside) > URL_LENGTH_MAX:
             logger.debug("Requesting[POST] %s with body: %s", url.urlpart, url.pretty_qspart)
-            resp, content = self.conn.request(
+            try:
+                resp, content = self.conn.request(
                     url.urlpart, method='POST', 
                     headers={'Content-Type':'application/x-www-form-urlencoded'}, 
                     body=url.qspart)
+            except:
+                logger.exception(e)
+                logger.debug("Method: POST")
+                logger.debug("urlpart: %s", url.urlpart)
+                logger.debug("headers: %s", {'Content-Type':'application/x-www-form-urlencoded'})
+                logger.debug("body: %s", url.qspart)
+                raise
         else:
             logger.debug("Requesting[GET] %s", url)
             resp, content = self.conn.request(url.fullurl)
