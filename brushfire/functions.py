@@ -1,14 +1,14 @@
 def field(x):
-    return "field(%s)" % x
+    return "field(%s)" % str(x)
 
 def ord(x):
-    return "ord(%s)" % x
+    return "ord(%s)" % str(x)
 
 def rord(x):
-    return "rord(%s)" % x
+    return "rord(%s)" % str(x)
 
 def sum(*args):
-    return "sum(%s)" % ','.join(args)
+    return "sum(%s)" % ','.join([str(x) for x in args])
 
 def sub(x, y):
     return "sub(%s,%s)" % (str(x), str(y))
@@ -35,10 +35,10 @@ def sqrt(x):
     return "sqrt(%s)" % str(x)
 
 def map(*args):
-    return "map(%s)" % ','.join(args)
+    return "map(%s)" % ','.join([str(x) for x in args])
 
 def currency(*args):
-    return "currency(%s)" % ','.join(args)
+    return "currency(%s)" % ','.join([str(x) for x in args])
 
 def linear(x, m, c):
     return "linear(%s,%s,%s)" % (str(x), str(m), str(c))
@@ -55,7 +55,7 @@ def min(x, y):
 def ms(*args):
     if len(args) == 0:
         args = "",
-    return "ms(%s)" % args
+    return "ms(%s)" % ','.join([str(x) for x in args])
 
 def rad(x):
     return "rad(%s)" % str(x)
