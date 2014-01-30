@@ -63,6 +63,7 @@ class SolrQuery(object):
         self.stats_facets = []
         self.fields = ['*', 'score']
         self.extra_params = {}
+        self.annotations = {}
 
     def set_fields(self, *fields):
         if len(fields) != 0:
@@ -76,6 +77,15 @@ class SolrQuery(object):
 
     def add_ordering(self, *order):
         self.ordering += order
+        return self
+
+    def clear_annotations(self):
+        self.annotations = {}
+        return self
+
+    def add_annotations(self, **kwargs):
+        for k,v in kwargs.items():
+            self.annotations[k] = v
         return self
 
     def clear_facets(self):
@@ -121,6 +131,7 @@ class SolrQuery(object):
         q.stats_facets = self.stats_facets[:]
         q.fields = self.fields[:]
         q.extra_params = copy.deepcopy(self.extra_params)
+        q.annotations = copy.deepcopy(self.annotations)
         return q
 
     def set_limits(self, low=None, high=None):
@@ -182,6 +193,7 @@ class SolrQuery(object):
             'facet':self.facets,
             'stats':self.stats,
             'stats_facets':self.stats_facets,
+            'annotations':self.annotations,
         }
         p.update(self.extra_params)
         return p

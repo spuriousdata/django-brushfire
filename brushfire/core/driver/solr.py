@@ -74,7 +74,7 @@ class SolrResponseException(SolrException):
 class Solr(object):
     sort_regex = re.compile('(\+|-)?(.*)')
     def __init__(self, server, core='', query_handler='select', lparams='',
-            cache=None, fields='*.score', rows=20):
+            cache=None, fields='*,score', rows=20):
         self.solr = server
         self.default_core = core
         self.conn = httplib2.Http(cache)
@@ -93,6 +93,17 @@ class Solr(object):
         if query.get('facet'):
             ff = query.pop('facet.fields')
             query = dict(query.items() + [('facet.field',x) for x in ff])
+        if query.get('annotations'):
+            ann = query.pop('annotations')
+            if query.get('fl'):
+                query['fl'] += ',' + \
+                        ','.join(
+                            ["%s:%s" % (x[0],x[1]) for x in ann.items()])
+            else:
+                query['fl'] = self.fields + \
+                        ',' + \
+                        ','.join(
+                            ["%s:%s" % (x[0],x[1]) for x in ann.items()])
         # convert True/False to strings
         new_query = {}
         for k,v in query.items():

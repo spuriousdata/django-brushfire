@@ -74,6 +74,12 @@ class BrushfireQuerySet(QuerySet):
             clone.query.add_stats_facets(*kwargs.get('facet'))
         return clone
 
+    def annotate(self, **kwargs):
+        clone = self._clone()
+        clone.allow_non_model_fields = True
+        clone.query.add_annotations(**kwargs)
+        return clone
+
     def values(self, *fields):
         clone = self._clone(BrushfireValuesQuerySet)
         clone.query.set_fields(*fields)
