@@ -226,6 +226,29 @@ class BrushfireQuerySet(QuerySet):
             clone.query.add_q(SQ(*args, **kwargs))
         return clone
 
+    def _serialize(self):
+        """
+        def __init__(self, model, query=None, using=None, allow_non_model_fields=False):
+        """
+        sr = {
+            'model': (self.model.__module__, self.model.__name__),
+            'allow_non_model_fields': self.allow_non_model_fields,
+            'query': self.query._serialize(),
+        }
+        import json
+        return json.dumps(sr)
+
+    @staticmethod
+    def _from_serial(data):
+        from django.utils.importlib import import_module
+        import json
+        sr = json.loads(data)
+        modulestring, modelstring = sr['model']
+        model = getattr(import_module(modulestring), modelstring)
+        query = SolrQuery._from_serial(sr['query'])
+        anmf = sr['allow_non_model_fields']
+        return BrushfireQuerySet(model, query=query, allow_non_model_fields=anmf)
+
 ################################################################################
 #
 #                              QuerySet subtypes

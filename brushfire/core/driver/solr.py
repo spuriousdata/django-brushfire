@@ -93,17 +93,18 @@ class Solr(object):
         if query.get('facet'):
             ff = query.pop('facet.fields')
             query = dict(query.items() + [('facet.field',x) for x in ff])
-        if query.get('annotations'):
+        if isinstance(query.get('annotations'), dict):
             ann = query.pop('annotations')
-            if query.get('fl'):
-                query['fl'] += ',' + \
-                        ','.join(
-                            ["%s:%s" % (x[0],x[1]) for x in ann.items()])
-            else:
-                query['fl'] = self.fields + \
-                        ',' + \
-                        ','.join(
-                            ["%s:%s" % (x[0],x[1]) for x in ann.items()])
+            if len(ann):
+                if query.get('fl'):
+                    query['fl'] += ',' + \
+                            ','.join(
+                                ["%s:%s" % (x[0],x[1]) for x in ann.items()])
+                else:
+                    query['fl'] = self.fields + \
+                            ',' + \
+                            ','.join(
+                                ["%s:%s" % (x[0],x[1]) for x in ann.items()])
         # convert True/False to strings
         new_query = {}
         for k,v in query.items():

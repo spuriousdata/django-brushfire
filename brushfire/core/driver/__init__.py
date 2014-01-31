@@ -47,6 +47,35 @@ class SearchNode(Node):
             filter_type = parts.pop()
         return (field, filter_type)
 
+    def _serialize(self):
+        s = {
+            'connector': self.connector,
+            'negated': self.negated,
+        }
+        children = []
+        for c in self.children:
+            if isinstance(c, SearchNode):
+                children.append(c._serialize())
+            else:
+                children.append(c)
+        s['children'] = children
+        return s
+
+    @staticmethod
+    def _from_serial(data):
+        if isinstance(data, basestring):
+            import json
+            data = json.loads(data)
+        s = SearchNode()
+        s.connector = data['connector']
+        s.negated = data['negated']
+        for c in data['children']:
+            if isinstance(c, dict):
+                s.children.append(SearchNode._from_serial(c))
+            else:
+                s.children.append(c)
+        return s
+
 class SQ(Q, SearchNode):
     pass
 
@@ -64,6 +93,37 @@ class SolrQuery(object):
         self.fields = ['*', 'score']
         self.extra_params = {}
         self.annotations = {}
+
+    def _serialize(self):
+        return {
+            'model': (self.model.__module__, self.model.__name__),
+            'low_mark': self.low_mark,
+            'high_mark': self.high_mark,
+            'where': self.where._serialize(),
+            'fq': self.fq._serialize(),
+            'ordering': self.ordering,
+            'stats': self.stats,
+            'stats_facets': self.stats_facets,
+            'fields': self.fields,
+            'extra_params': self.extra_params,
+            'annotations': self.annotations,
+        }
+
+    @staticmethod
+    def _from_serial(dct):
+        if isinstance(dct, basestring):
+            import json
+            dct = json.loads(dct)
+        from django.utils.importlib import import_module
+        s = SolrQuery()
+        modulestring, modelstring = dct.pop('model')
+        model = getattr(import_module(modulestring), modelstring)
+        s.model = model
+        s.where = SearchNode._from_serial(dct.pop('where'))
+        s.fq = SearchNode._from_serial(dct.pop('fq'))
+        for k, v in dct.items():
+            setattr(s, k, v)
+        return s
 
     def set_fields(self, *fields):
         if len(fields) != 0:
