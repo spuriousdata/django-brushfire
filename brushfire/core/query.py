@@ -1,6 +1,9 @@
+import json
+
 from brushfire.core.driver import SolrQuery, SQ
 from django.db.models.query import QuerySet
 from django.utils.datastructures import SortedDict
+from django.utils.importlib import import_module
 
 import logging
 logger = logging.getLogger('brushfire.core.query')
@@ -235,13 +238,10 @@ class BrushfireQuerySet(QuerySet):
             'allow_non_model_fields': self.allow_non_model_fields,
             'query': self.query._serialize(),
         }
-        import json
         return json.dumps(sr)
 
     @staticmethod
     def _from_serial(data):
-        from django.utils.importlib import import_module
-        import json
         sr = json.loads(data)
         modulestring, modelstring = sr['model']
         model = getattr(import_module(modulestring), modelstring)

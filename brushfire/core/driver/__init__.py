@@ -1,7 +1,10 @@
 import logging
+import json
 import copy
+
 from django.utils.tree import Node
 from django.db.models import Q
+from django.utils.importlib import import_module
 try:
     from django.db.models.sql.constants import LOOKUP_SEP
 except ImportError:
@@ -64,7 +67,6 @@ class SearchNode(Node):
     @staticmethod
     def _from_serial(data):
         if isinstance(data, basestring):
-            import json
             data = json.loads(data)
         s = SearchNode()
         s.connector = data['connector']
@@ -112,9 +114,7 @@ class SolrQuery(object):
     @staticmethod
     def _from_serial(dct):
         if isinstance(dct, basestring):
-            import json
             dct = json.loads(dct)
-        from django.utils.importlib import import_module
         s = SolrQuery()
         modulestring, modelstring = dct.pop('model')
         model = getattr(import_module(modulestring), modelstring)
