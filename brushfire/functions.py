@@ -46,8 +46,8 @@ def linear(x, m, c):
 def recip(x, m, a, b):
     return "recip(%s,%s,%s)" % (str(x), str(m), str(a), str(b))
 
-def max(x, c):
-    return "max(%s,%s)" % (str(x), str(c))
+def max(*args):
+    return "max(%s)" % ','.join([str(x) for x in args])
 
 def min(x, y):
     return "min(%s,%s)" % (str(x), str(y))

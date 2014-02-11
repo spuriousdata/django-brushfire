@@ -24,6 +24,10 @@ class BrushfireQuerySet(QuerySet):
     def sort(self, *fields):
         return self.order_by(*fields)
 
+    def use_handler(self, handler):
+        self.query.set_handler(handler)
+        return self
+
     def order_by(self, *fields):
         assert self.query.can_filter(), \
                 "Cannot filter a query once a slice has been taken."

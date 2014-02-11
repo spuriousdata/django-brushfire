@@ -95,6 +95,7 @@ class SolrQuery(object):
         self.fields = ['*', 'score']
         self.extra_params = {}
         self.annotations = {}
+        self.handler = conf.get('handlers.default')
 
     def _serialize(self):
         return {
@@ -109,6 +110,7 @@ class SolrQuery(object):
             'fields': self.fields,
             'extra_params': self.extra_params,
             'annotations': self.annotations,
+            'handler': self.handler,
         }
 
     @staticmethod
@@ -130,6 +132,9 @@ class SolrQuery(object):
             self.fields = list(fields) + ['score']
         else:
             self.fields = [x.name for x in self.model._meta.fields] + ['score']
+            
+    def set_handler(self, handler):
+        self.handler = handler
 
     def clear_ordering(self):
         self.ordering = []
@@ -192,6 +197,7 @@ class SolrQuery(object):
         q.fields = self.fields[:]
         q.extra_params = copy.deepcopy(self.extra_params)
         q.annotations = copy.deepcopy(self.annotations)
+        q.handler = self.handler
         return q
 
     def set_limits(self, low=None, high=None):
@@ -254,6 +260,7 @@ class SolrQuery(object):
             'stats':self.stats,
             'stats_facets':self.stats_facets,
             'annotations':self.annotations,
+            'handler':self.handler,
         }
         p.update(self.extra_params)
         return p
@@ -313,7 +320,7 @@ class SolrQuery(object):
         elif filter_type == 'in':
             if type(value) not in (list, tuple):
                 value = [value]
-            fragment = "%s:(%s)" % (field, " OR ".join(value))
+            fragment = "%s:(%s)" % (field, " OR ".join(['"%s"' % x if not x.startswith('"') else x for x in value]))
         elif filter_type == 'range':
             fragment = '%s:["%s" TO "%s"]' % (field, value[0], value[1])
         return fragment
