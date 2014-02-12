@@ -127,7 +127,7 @@ class Solr(object):
                     url.urlpart, method='POST', 
                     headers={'Content-Type':'application/x-www-form-urlencoded'}, 
                     body=url.qspart)
-            except:
+            except Exception as e:
                 logger.exception(e)
                 logger.debug("Method: POST")
                 logger.debug("urlpart: %s", url.urlpart)
