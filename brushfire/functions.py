@@ -121,51 +121,35 @@ def e():
     return "e()"
 
 def docfreq(field, word):
-    w = repr(word)
-    if w.startswith('u'):
-        w = w[1:]
+    w = '"%s"' % word.replace('"', r'\"')
     return 'docfreq(%s, %s)' % (field, w)
 
 def termfreq(field, word):
-    w = repr(word)
-    if w.startswith('u'):
-        w = w[1:]
+    w = '"%s"' % word.replace('"', r'\"')
     return 'termfreq(%s, %s)' % (field, w) 
 
 def totaltermfreq(field, word):
-    w = repr(word)
-    if w.startswith('u'):
-        w = w[1:]
+    w = '"%s"' % word.replace('"', r'\"')
     return 'totaltermfreq(%s, %s)' % (field, w)
 
 def ttf(*args):
-    w = repr(word)
-    if w.startswith('u'):
-        w = w[1:]
+    w = '"%s"' % word.replace('"', r'\"')
     return 'ttf(%s, %s)' % (field, w)
 
 def sumtotaltermfreq(field, word):
-    w = repr(word)
-    if w.startswith('u'):
-        w = w[1:]
+    w = '"%s"' % word.replace('"', r'\"')
     return 'sumtotaltermfreq(%s, %s)' % (field, w)
 
 def sttf(*args):
-    w = repr(word)
-    if w.startswith('u'):
-        w = w[1:]
+    w = '"%s"' % word.replace('"', r'\"')
     return 'sttf(%s, %s)' % (field, w)
 
 def idf(field, word):
-    w = repr(word)
-    if w.startswith('u'):
-        w = w[1:]
+    w = '"%s"' % word.replace('"', r'\"')
     return 'idf(%s, %s)' % (field, w)
 
 def tf(field, word):
-    w = repr(word)
-    if w.startswith('u'):
-        w = w[1:]
+    w = '"%s"' % word.replace('"', r'\"')
     return 'tf(%s, %s)' % (field, w)
 
 def norm(field):
