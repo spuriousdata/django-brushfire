@@ -18,6 +18,7 @@ class BrushfireQuerySet(QuerySet):
         self.query = query or SolrQuery(model)
         self.facet_counts = None
         self.term_vectors = None
+        self.term_vector_response = None
         self.stats = None
         self.allow_non_model_fields = allow_non_model_fields
 
@@ -117,7 +118,6 @@ class BrushfireQuerySet(QuerySet):
             self.stats = results.get('stats', {})
 
     def iterator(self):
-        results = self.query.run()
         self._cache_response(self.query.run())
 
         for x in self.docs.get('docs', []):
@@ -159,6 +159,7 @@ class BrushfireQuerySet(QuerySet):
                     if x.get('positions'):
                         x['positions'] = dict(zip(x['positions'][::2], x['positions'][1::2]))
                     ret[unique][fieldname][k] = x
+        self.term_vector_response = ret
         return ret
 
     def get_stats(self, force=False):
@@ -175,12 +176,16 @@ class BrushfireQuerySet(QuerySet):
         return stats
 
     def postprocess_result(self, result):
+        """
+        This function takes the data from solr and turns it into a set of model objects
+        """
         pk = self.query.get_meta().pk.column
         keys = set(['foo'] + [x.name for x in self.query.get_meta().fields]) & set(result.keys())
         r = {k:result[k] for k in keys}
         r['pk'] = r[pk]
         model = self.model(**r)
-        if self.allow_non_model_fields:
+        if self.allow_non_model_fields or self.term_vectors:
+            # self.term_vectors implys allow_non_model_fields
             m = ModelLookalikeObject()
             m.__dict__.update(model.__dict__)
             nmf = set(result.keys()) - set(['foo'] + [x.name for x in self.query.get_meta().fields])
@@ -188,6 +193,14 @@ class BrushfireQuerySet(QuerySet):
             m.__dict__.update(r)
             m.pk = model.pk
             model = m
+            if self.term_vectors:
+                if not self.term_vector_response:
+                    self.get_term_vectors()
+                tv = self.term_vector_response
+                if tv.get(model.pk, None):
+                    model.__dict__.update({'_term_vectors': tv.get(model.pk)})
+                else:
+                    model.__dict__.update({'_term_vectors': {}})
         return model
 
     def narrow_group(self, key, values, connector='OR'):
