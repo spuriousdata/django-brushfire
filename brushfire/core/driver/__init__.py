@@ -285,6 +285,9 @@ class SolrQuery(object):
             **self.get_query_params()
         )
 
+    # All of the quoting here needs to get un-fucked. There is no compensation
+    # whatsoever for apostrophes or quotes within the string. Whatever solution
+    # we use should also be applied to brushfire.functions
     def build_query_fragment(self, field, filter_type, value):
         fragment = ''
 
@@ -303,15 +306,20 @@ class SolrQuery(object):
         if type(value) in (set, list, tuple) and len(value) == 1:
             value = value[0]
 
+        # This is what was causing the multiple quotes around the first two
+        # items of a list issue
+        """
         if type(value) in (set, list, tuple):
             if value[0].find(' ') != -1:
                 value[0] = '"%s"' % value[0]
 
             if value[1].find(' ') != -1:
                 value[1] = '"%s"' % value[1]
-        else:
+        """
+        if type(value) not in (set, list, tuple):
             if type(value) not in (unicode, str):
                 value = str(value)
+            # quote a single string value
             if value.find(' ') != -1:
                 value = '"%s"' % value
 
@@ -320,6 +328,7 @@ class SolrQuery(object):
         elif filter_type == 'in':
             if type(value) not in (list, tuple):
                 value = [value]
+            # quote a multi-string value
             fragment = "%s:(%s)" % (field, " OR ".join(['"%s"' % x if not x.startswith('"') else x for x in value]))
         elif filter_type == 'range':
             fragment = '%s:["%s" TO "%s"]' % (field, value[0], value[1])
