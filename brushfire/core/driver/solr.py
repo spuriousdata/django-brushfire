@@ -143,7 +143,7 @@ class Solr(object):
             e.errorbody = content
             e.url = url.fullurl
             logger.exception(e)
-            logger.debug("url: %s", e.url)
+            logger.debug("url: %s", url)
             raise e
 
         return content
