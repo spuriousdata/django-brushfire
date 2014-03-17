@@ -9,8 +9,10 @@ try:
     from django.db.models.sql.constants import LOOKUP_SEP
 except ImportError:
     from django.db.models.constants import LOOKUP_SEP
+
 from brushfire.core.driver.solr import *
 from brushfire.core.settings import configuration as conf
+from brushfire.utils import smart_quote_string
 
 QUERY_TERMS = set([
     'exact', 'contains', 'gt', 'gte', 'lt', 'lte', 'in',
@@ -321,7 +323,7 @@ class SolrQuery(object):
                 value = str(value)
             # quote a single string value
             if value.find(' ') != -1:
-                value = '"%s"' % value
+                value = smart_quote_string(value)
 
         if filter_type not in ('in', 'range'):
             fragment = "%s:%s" % (field, filters[filter_type] % value)
@@ -329,7 +331,7 @@ class SolrQuery(object):
             if type(value) not in (list, tuple):
                 value = [value]
             # quote a multi-string value
-            fragment = "%s:(%s)" % (field, " OR ".join(['"%s"' % x if not x.startswith('"') else x for x in value]))
+            fragment = "%s:(%s)" % (field, " OR ".join([smart_quote_string(x) for x in value]))
         elif filter_type == 'range':
             fragment = '%s:["%s" TO "%s"]' % (field, value[0], value[1])
         return fragment

@@ -1,3 +1,5 @@
+from brushfire.utils import quote_string
+
 def field(x):
     return "field(%s)" % str(x).encode('utf-8')
 
@@ -121,36 +123,28 @@ def e():
     return "e()"
 
 def docfreq(field, word):
-    w = '"%s"' % word.replace('"', r'\"')
-    return 'docfreq(%s, %s)' % (field, w)
+    return 'docfreq(%s, %s)' % (field, quote_string(word))
 
 def termfreq(field, word):
-    w = '"%s"' % word.replace('"', r'\"')
-    return 'termfreq(%s, %s)' % (field, w) 
+    return 'termfreq(%s, %s)' % (field, quote_string(word)) 
 
 def totaltermfreq(field, word):
-    w = '"%s"' % word.replace('"', r'\"')
-    return 'totaltermfreq(%s, %s)' % (field, w)
+    return 'totaltermfreq(%s, %s)' % (field, quote_string(word))
 
-def ttf(*args):
-    w = '"%s"' % word.replace('"', r'\"')
-    return 'ttf(%s, %s)' % (field, w)
+def ttf(field, word):
+    return 'ttf(%s, %s)' % (field, quote_string(word))
 
 def sumtotaltermfreq(field, word):
-    w = '"%s"' % word.replace('"', r'\"')
-    return 'sumtotaltermfreq(%s, %s)' % (field, w)
+    return 'sumtotaltermfreq(%s, %s)' % (field, quote_string(word))
 
-def sttf(*args):
-    w = '"%s"' % word.replace('"', r'\"')
-    return 'sttf(%s, %s)' % (field, w)
+def sttf(field, word):
+    return 'sttf(%s, %s)' % (field, quote_string(word))
 
 def idf(field, word):
-    w = '"%s"' % word.replace('"', r'\"')
-    return 'idf(%s, %s)' % (field, w)
+    return 'idf(%s, %s)' % (field, quote_string(word))
 
 def tf(field, word):
-    w = '"%s"' % word.replace('"', r'\"')
-    return 'tf(%s, %s)' % (field, w)
+    return 'tf(%s, %s)' % (field, quote_string(word))
 
 def norm(field):
     return 'norm(%s)' % field
