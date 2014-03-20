@@ -2,6 +2,8 @@ import logging
 import json
 import copy
 
+import six
+
 from django.utils.tree import Node
 from django.db.models import Q
 from django.utils.importlib import import_module
@@ -20,6 +22,9 @@ QUERY_TERMS = set([
 
 logger = logging.getLogger('brushfire.driver.query')
 
+class RawSolrString(unicode):
+    pass
+
 class SearchNode(Node):
     AND = 'AND'
     OR = 'OR'
@@ -30,6 +35,8 @@ class SearchNode(Node):
         for child in self.children:
             if hasattr(child, 'as_query_string'):
                 result.append(child.as_query_string(query_fragment_callback))
+            elif isinstance(child, six.string_types):
+                result.append(query_fragment_callback(None, None, child))
             else:
                 expression, value = child
                 field, filter_type = self.split_expression(expression)
@@ -134,6 +141,9 @@ class SolrQuery(object):
             self.fields = list(fields) + ['score']
         else:
             self.fields = [x.name for x in self.model._meta.fields] + ['score']
+            
+    def add_fields(self, *fields):
+        self.fields += list(fields)
             
     def set_handler(self, handler):
         self.handler = handler
@@ -253,6 +263,9 @@ class SolrQuery(object):
                         ["%s=%s" % (k,v) for k,v in self.get_query_params().items()])
 
     def get_query_params(self):
+        """
+        Return the solr query params, excluding ?q= and ?fq=
+        """
         p = {
             'start':self.start(), 
             'rows':self.rows(), 
@@ -287,9 +300,6 @@ class SolrQuery(object):
             **self.get_query_params()
         )
 
-    # All of the quoting here needs to get un-fucked. There is no compensation
-    # whatsoever for apostrophes or quotes within the string. Whatever solution
-    # we use should also be applied to brushfire.functions
     def build_query_fragment(self, field, filter_type, value):
         fragment = ''
 
@@ -318,14 +328,16 @@ class SolrQuery(object):
             if value[1].find(' ') != -1:
                 value[1] = '"%s"' % value[1]
         """
-        if type(value) not in (set, list, tuple):
+        if type(value) not in (set, list, tuple, RawSolrString):
             if type(value) not in (unicode, str):
                 value = str(value)
             # quote a single string value
             if value.find(' ') != -1:
                 value = smart_quote_string(value)
 
-        if filter_type not in ('in', 'range'):
+        if field is None and filter_type is None:
+            fragment = value
+        elif filter_type not in ('in', 'range'):
             fragment = "%s:%s" % (field, filters[filter_type] % value)
         elif filter_type == 'in':
             if type(value) not in (list, tuple):
@@ -375,6 +387,8 @@ class SolrQuery(object):
                 where.start_subtree(connector)
                 self.add_q(child, property=property)
                 where.end_subtree()
+            elif isinstance(child, six.string_types):
+                where.add(child, connector)
             else:
                 expression, value = child
                 where.add((expression, value), connector)
