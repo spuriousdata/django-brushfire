@@ -85,14 +85,15 @@ class Solr(object):
 
     def _url(self, path, query):
         path = path if path.startswith('/') else "/%s" % path
+        new_query = []
         if query.get('stats'):
             sfl = query.pop('stats.fields', [])
             sft = query.pop('stats.facets', [])
-            query = dict(query.items() + [('stats.field',x) for x in sfl])
-            query = dict(query.items() + [('stats.facet',x) for x in sft])
+            new_query += [('stats.field',x) for x in sfl]
+            new_query += [('stats.facet',x) for x in sft]
         if query.get('facet'):
             ff = query.pop('facet.fields')
-            query = dict(query.items() + [('facet.field',x) for x in ff])
+            new_query += [('facet.field',x) for x in ff]
         if isinstance(query.get('annotations'), dict):
             ann = query.pop('annotations')
             if len(ann):
@@ -106,14 +107,15 @@ class Solr(object):
                             ','.join(
                                 ["%s:%s" % (x[0],x[1]) for x in ann.items()])
         # convert True/False to strings
-        new_query = {}
+        tmp = {}
         for k,v in query.items():
             if type(v) is bool:
                 v = "true" if v else "false"
-            new_query[k] = v
-        query = new_query
+            if v != '' and v is not None:
+                tmp[k] = v
+        new_query += list(tmp.items())
         # End convert True/False
-        qs = "%s" % e(query) if len(query) else ''
+        qs = e(new_query) if len(new_query) else ''
         return Url(self.solr, path, qs)
 
 
