@@ -85,14 +85,18 @@ class Solr(object):
 
     def _url(self, path, query):
         path = path if path.startswith('/') else "/%s" % path
+        new_query = []
         if query.get('stats'):
             sfl = query.pop('stats.fields', [])
             sft = query.pop('stats.facets', [])
-            query = dict(query.items() + [('stats.field',x) for x in sfl])
-            query = dict(query.items() + [('stats.facet',x) for x in sft])
+            new_query += [('stats.field',x) for x in sfl]
+            new_query += [('stats.facet',x) for x in sft]
         if query.get('facet'):
             ff = query.pop('facet.fields')
-            query = dict(query.items() + [('facet.field',x) for x in ff])
+            new_query += [('facet.field',x) for x in ff]
+        if query.get('frange') or type(query.get('frange')) in (list, tuple):
+            fr = query.pop('frange')
+            new_query += [('fq',str(x)) for x in fr]
         if isinstance(query.get('annotations'), dict):
             ann = query.pop('annotations')
             if len(ann):
@@ -106,14 +110,15 @@ class Solr(object):
                             ','.join(
                                 ["%s:%s" % (x[0],x[1]) for x in ann.items()])
         # convert True/False to strings
-        new_query = {}
+        tmp = {}
         for k,v in query.items():
             if type(v) is bool:
                 v = "true" if v else "false"
-            new_query[k] = v
-        query = new_query
+            if v != '' and v is not None:
+                tmp[k] = v
+        new_query += list(tmp.items())
         # End convert True/False
-        qs = "%s" % e(query) if len(query) else ''
+        qs = e(new_query) if len(new_query) else ''
         return Url(self.solr, path, qs)
 
 
@@ -150,7 +155,7 @@ class Solr(object):
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
                handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, 
-               sort=[], facet=[], fq=None, stats=[], stats_facets=[], **kwargs):
+               sort=[], facet=[], fq=None, frange=[], stats=[], stats_facets=[], **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
         if core == DEFAULT:
@@ -181,6 +186,7 @@ class Solr(object):
             'rows': rows,
             'start': start,
             'sort': sort,
+            'frange': frange,
         }
         if facet:
             q.update({

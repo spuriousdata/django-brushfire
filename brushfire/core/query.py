@@ -1,6 +1,7 @@
 import json
 
 from brushfire.core.driver import SolrQuery, SQ
+from brushfire.core.exceptions import BrushfireException
 from django.db.models.query import QuerySet
 from django.utils.datastructures import SortedDict
 from django.utils.importlib import import_module
@@ -229,7 +230,28 @@ class BrushfireQuerySet(QuerySet):
         else:
             clone.query.add_q(SQ(*args, **kwargs), property='fq')
         return clone
-
+    
+    def frange(self, l=None, u=None, add_to_fl=True, **kwargs):
+        logger.debug("Called frange with (l=%s, u=%s, add_to_fl=%s, %r)", 
+                     str(l), str(u), add_to_fl, kwargs)
+        if kwargs:
+            assert self.query.can_filter(), \
+                    "Cannot filter a query once a slice has been taken."
+        assert l or u, "At least one of l or u is required."
+        
+        clone = self._clone()
+        
+        if len(kwargs.keys()) > 1:
+            raise BrushfireException, "frange must be called once for each key/value pair"
+        k,v = kwargs.items()[0]
+        
+        clone.query.add_frange(l=l, u=u, func=v)
+            
+        if add_to_fl:
+            clone.allow_non_model_fields = True
+            clone.query.add_fields("%s:%s" % (k,v))
+        return clone
+        
     def get(self, *args, **kwargs):
         return self.filter(*args, **kwargs)[0]
 
