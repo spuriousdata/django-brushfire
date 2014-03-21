@@ -15,15 +15,13 @@ except ImportError:
 from brushfire.core.driver.solr import *
 from brushfire.core.settings import configuration as conf
 from brushfire.utils import smart_quote_string
+from brushfire.core.types import FRange
 
 QUERY_TERMS = set([
     'exact', 'contains', 'gt', 'gte', 'lt', 'lte', 'in',
     'startswith', 'endswith', 'like', 'range'])
 
 logger = logging.getLogger('brushfire.driver.query')
-
-class RawSolrString(unicode):
-    pass
 
 class SearchNode(Node):
     AND = 'AND'
@@ -104,6 +102,7 @@ class SolrQuery(object):
         self.fields = ['*', 'score']
         self.extra_params = {}
         self.annotations = {}
+        self.frange = []
         self.handler = conf.get('handlers.default')
 
     def _serialize(self):
@@ -119,6 +118,7 @@ class SolrQuery(object):
             'fields': self.fields,
             'extra_params': self.extra_params,
             'annotations': self.annotations,
+            'frange': [x._serialize() for x in self.frange],
             'handler': self.handler,
         }
 
@@ -132,6 +132,8 @@ class SolrQuery(object):
         s.model = model
         s.where = SearchNode._from_serial(dct.pop('where'))
         s.fq = SearchNode._from_serial(dct.pop('fq'))
+        if dct.get('frange', False):
+            s.frange = [FRange(l=x['l'], u=x['u'], func=x['func']) for x in dct.pop('frange')]
         for k, v in dct.items():
             setattr(s, k, v)
         return s
@@ -163,6 +165,14 @@ class SolrQuery(object):
     def add_annotations(self, **kwargs):
         for k,v in kwargs.items():
             self.annotations[k] = v
+        return self
+    
+    def clear_frange(self):
+        self.frange = []
+        return self
+
+    def add_frange(self, l, u, func):
+        self.frange.append(FRange(l=l, u=u, func=func))
         return self
 
     def clear_facets(self):
@@ -209,6 +219,7 @@ class SolrQuery(object):
         q.fields = self.fields[:]
         q.extra_params = copy.deepcopy(self.extra_params)
         q.annotations = copy.deepcopy(self.annotations)
+        q.frange = self.frange[:]
         q.handler = self.handler
         return q
 
@@ -250,7 +261,7 @@ class SolrQuery(object):
             qs = where.as_query_string(self.build_query_fragment)
         elif isinstance(where, basestring):
             qs = where
-        if not qs:
+        if not qs and property != 'fq': # Don't add fq=*:*
             qs = "*:*"
         return qs
 
@@ -275,6 +286,7 @@ class SolrQuery(object):
             'stats':self.stats,
             'stats_facets':self.stats_facets,
             'annotations':self.annotations,
+            'frange':self.frange,
             'handler':self.handler,
         }
         p.update(self.extra_params)
@@ -328,7 +340,7 @@ class SolrQuery(object):
             if value[1].find(' ') != -1:
                 value[1] = '"%s"' % value[1]
         """
-        if type(value) not in (set, list, tuple, RawSolrString):
+        if type(value) not in (set, list, tuple):
             if type(value) not in (unicode, str):
                 value = str(value)
             # quote a single string value

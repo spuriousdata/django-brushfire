@@ -94,6 +94,9 @@ class Solr(object):
         if query.get('facet'):
             ff = query.pop('facet.fields')
             new_query += [('facet.field',x) for x in ff]
+        if query.get('frange') or type(query.get('frange')) in (list, tuple):
+            fr = query.pop('frange')
+            new_query += [('fq',str(x)) for x in fr]
         if isinstance(query.get('annotations'), dict):
             ann = query.pop('annotations')
             if len(ann):
@@ -152,7 +155,7 @@ class Solr(object):
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
                handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, 
-               sort=[], facet=[], fq=None, stats=[], stats_facets=[], **kwargs):
+               sort=[], facet=[], fq=None, frange=[], stats=[], stats_facets=[], **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
         if core == DEFAULT:
@@ -183,6 +186,7 @@ class Solr(object):
             'rows': rows,
             'start': start,
             'sort': sort,
+            'frange': frange,
         }
         if facet:
             q.update({

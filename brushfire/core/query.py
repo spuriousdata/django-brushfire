@@ -1,6 +1,6 @@
 import json
 
-from brushfire.core.driver import SolrQuery, SQ, RawSolrString
+from brushfire.core.driver import SolrQuery, SQ
 from brushfire.core.exceptions import BrushfireException
 from django.db.models.query import QuerySet
 from django.utils.datastructures import SortedDict
@@ -241,23 +241,11 @@ class BrushfireQuerySet(QuerySet):
         
         clone = self._clone()
         
-        connector = kwargs.pop('__brushfire_connector__', 'AND')
-        
         if len(kwargs.keys()) > 1:
             raise BrushfireException, "frange must be called once for each key/value pair"
         k,v = kwargs.items()[0]
         
-        lparam = "{!frange "
-        lparam += "l=%s " % str(l) if l else ""
-        lparam += "u=%s" % str(u) if u else ""
-        lparam += "}"
-        
-        v = RawSolrString(v)
-        fq_v = RawSolrString("%s%s" % (lparam, v))
-        if connector != 'AND':
-            clone.query.add_q(SQ(fq_v), connector=SQ.OR, property='fq')
-        else:
-            clone.query.add_q(SQ(fq_v), property='fq')
+        clone.query.add_frange(l=l, u=u, func=v)
             
         if add_to_fl:
             clone.allow_non_model_fields = True
