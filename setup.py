@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='django-brushfire',
-    version='0.0.1',
+    version='0.1.0',
     author="Mike O'Malley",
     author_email='spuriousdata@gmail.com',
     description='Solr-only replacement for Haystack.',
@@ -16,7 +16,7 @@ setup(
         'httplib2',
     ],
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Framework :: Django",
         "Intended Audience :: Developers",
         "Operating System :: OS Independent",
