@@ -21,6 +21,18 @@ Grab the source from github::
 
     git clone https://github.com/spuriousdata/brushfire.git
     
+#############
+Configuration
+#############
+::
+
+    BRUSHFIRE = {
+        'host': 'http://solr-server.mydomain.com/solr',
+        'handlers': {
+            'default': 'select',
+        },
+    }
+
 -----
 Usage
 -----
