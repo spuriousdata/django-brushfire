@@ -26,6 +26,8 @@ Configuration
 #############
 ::
 
+    # project/settings.py
+
     BRUSHFIRE = {
         'host': 'http://solr-server.mydomain.com/solr',
         'handlers': {
@@ -56,7 +58,7 @@ defined as your unique id in your solr schema.::
 
 Now you can query the data using normal django ORM syntax::
 
-    >>> p = People.objects.filter(name__startswith='Bob', height_inches__gte=60)
+    >>> p = People.objects.filter(name__startswith='Bob', age__gte=60)
     >>> p.count()
     32
     >>> p[0].__dict__
