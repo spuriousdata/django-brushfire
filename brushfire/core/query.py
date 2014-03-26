@@ -237,7 +237,7 @@ class BrushfireQuerySet(QuerySet):
         if kwargs:
             assert self.query.can_filter(), \
                     "Cannot filter a query once a slice has been taken."
-        assert l or u, "At least one of l or u is required."
+        assert l is not None or u is not None, "At least one of l or u is required."
         
         clone = self._clone()
         
@@ -269,9 +269,6 @@ class BrushfireQuerySet(QuerySet):
         return clone
 
     def _serialize(self):
-        """
-        def __init__(self, model, query=None, using=None, allow_non_model_fields=False):
-        """
         sr = {
             'model': (self.model.__module__, self.model.__name__),
             'allow_non_model_fields': self.allow_non_model_fields,
