@@ -13,7 +13,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'Django >= 1.4.0',
-        'httplib2',
+        'requests >= 2.3.0',
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",

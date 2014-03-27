@@ -1,5 +1,4 @@
-import httplib2
-import json
+import requests
 import logging
 import re
 from urllib import  urlencode as e
@@ -11,10 +10,11 @@ DEFAULT = 0xDEFA17
 logger = logging.getLogger('brushfire.driver.solr')
 
 class Url(object):
-    def __init__(self, start, path, qs):
+    def __init__(self, start, path, params=()):
         self.start = start
         self.path = path
-        self.qs = qs
+        self.params = params
+        self.qs = e(params) if len(params) else ''
     
     @property
     def fullurl(self):
@@ -38,6 +38,10 @@ class Url(object):
     @property
     def qspart(self):
         return self.qs
+    
+    @property
+    def query_params(self):
+        return self.params
 
     @property
     def rightside(self):
@@ -77,7 +81,7 @@ class Solr(object):
             cache=None, fields='*,score', rows=20):
         self.solr = server
         self.default_core = core
-        self.conn = httplib2.Http(cache)
+        self.cache = cache
         self.query_handler = query_handler
         self.lparams = lparams
         self.fields = fields
@@ -85,18 +89,18 @@ class Solr(object):
 
     def _url(self, path, query):
         path = path if path.startswith('/') else "/%s" % path
-        new_query = []
+        query_params = []
         if query.get('stats'):
             sfl = query.pop('stats.fields', [])
             sft = query.pop('stats.facets', [])
-            new_query += [('stats.field',x) for x in sfl]
-            new_query += [('stats.facet',x) for x in sft]
+            query_params += [('stats.field',x) for x in sfl]
+            query_params += [('stats.facet',x) for x in sft]
         if query.get('facet'):
             ff = query.pop('facet.fields')
-            new_query += [('facet.field',x) for x in ff]
+            query_params += [('facet.field',x) for x in ff]
         if query.get('frange') or type(query.get('frange')) in (list, tuple):
             fr = query.pop('frange')
-            new_query += [('fq',str(x)) for x in fr]
+            query_params += [('fq',str(x)) for x in fr]
         if isinstance(query.get('annotations'), dict):
             ann = query.pop('annotations')
             if len(ann):
@@ -116,10 +120,9 @@ class Solr(object):
                 v = "true" if v else "false"
             if v != '' and v is not None:
                 tmp[k] = v
-        new_query += list(tmp.items())
+        query_params += list(tmp.items())
         # End convert True/False
-        qs = e(new_query) if len(new_query) else ''
-        return Url(self.solr, path, qs)
+        return Url(self.solr, path, query_params)
 
 
     def _raw(self, path, **kwargs):
@@ -127,31 +130,26 @@ class Solr(object):
 
         if len(url.rightside) > URL_LENGTH_MAX:
             logger.debug("Requesting[POST] %s with body: %s", url.urlpart, url.pretty_qspart)
-            try:
-                resp, content = self.conn.request(
-                    url.urlpart, method='POST', 
-                    headers={'Content-Type':'application/x-www-form-urlencoded'}, 
-                    body=url.qspart)
-            except Exception as e:
-                logger.exception(e)
+            resp = requests.post(url.urlpart, params=url.query_params)
+            if resp.status_code != 200:
                 logger.debug("Method: POST")
-                logger.debug("urlpart: %s", url.urlpart)
-                logger.debug("headers: %s", {'Content-Type':'application/x-www-form-urlencoded'})
-                logger.debug("body: %s", url.qspart)
-                raise
+                logger.debug("url: %s", resp.url)
+                logger.error("Error[%d]: url: %s", resp.status_code, resp.url)
+                try:
+                    raise SolrException("Request returned status[%d]: %r" % (resp.status_code, resp.json()))
+                except ValueError:
+                    raise SolrException("Request returned status[%d]: %s" % (resp.status_code, resp.content))
         else:
             logger.debug("Requesting[GET] %s", url)
-            resp, content = self.conn.request(url.fullurl)
+            resp = requests.get(url.urlpart, params=url.query_params)
 
-        if resp['status'] != '200':
-            e = SolrException("Request returned status %d" % int(resp['status']))
-            e.errorbody = content
-            e.url = url.fullurl
+        if resp.status_code != 200:
+            e = SolrException("Request returned status[%d]: %s" % (resp.status_code, resp.content))
+            logger.error("Error[%d]: url: %s", resp.status_code, resp.url)
             logger.exception(e)
-            logger.debug("url: %s", url)
             raise e
 
-        return content
+        return resp
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
                handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, 
@@ -206,13 +204,19 @@ class Solr(object):
             q['fq'] = fq
 
         q.update(kwargs)
-        response = self._raw(path, **q)
-        if raw:
-            return response
         try:
-            return json.loads(response)
+            response = self._raw(path, **q)
+        except Exception as e:
+            logger.exception(e)
+            raise 
+        
+        if raw:
+            return response.content
+        try:
+            return response.json()
         except ValueError as e:
-            raise SolrResponseException("Error decoding JSON response from Solr, possible misconfiguration. Error: %s" % e.message)
+            raise SolrResponseException("Error decoding JSON response from Solr, "\
+                    "possible misconfiguration. Content: %s" % response.content)
 
 if __name__ == '__main__':
     l = logging.getLogger('brushfire')
