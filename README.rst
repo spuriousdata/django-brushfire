@@ -24,7 +24,10 @@ Grab the source from github::
 #############
 Configuration
 #############
-::
+Brushfire doesn't define any models or urls, so you don't need to list it in
+INSTALLED_APPS, although you can if you wish.
+
+A BRUSHFIRE dictionary is required, however.::
 
     # project/settings.py
 
