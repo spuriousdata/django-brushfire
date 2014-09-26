@@ -1,5 +1,7 @@
 import json
 
+from collections import OrderedDict
+
 from brushfire.core.driver import SolrQuery, SQ
 from brushfire.core.exceptions import BrushfireException
 from django.db.models.query import QuerySet
@@ -132,7 +134,7 @@ class BrushfireQuerySet(QuerySet):
         ret = {}
         ff = self.facet_counts.get('facet_fields', {})
         for key in ff.keys():
-            ret[key] = dict(zip(ff[key][::2], ff[key][1::2]))
+            ret[key] = OrderedDict(zip(ff[key][::2], ff[key][1::2]))
         return ret
 
     def get_term_vectors(self):
