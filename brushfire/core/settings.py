@@ -33,7 +33,7 @@ BRUSHFIRE = {
             'handler': '/dataimport',
             'command': 'full-import',
             'clear': True,
-            'swap_cores_on_complete': ['collection1', 'collection2'],
+            'swap_cores_on_complete': 'othercore',
         },
     },
     'query': {
