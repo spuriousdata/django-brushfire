@@ -9,21 +9,26 @@ class Command(NoArgsCommand):
         make_option('-r', '--handler', action='store'),
         make_option('-c', '--core', action='store'),
         make_option('-s', '--swap_core', action='store'),
+        make_option('-a', '--core_admin', action='store'),
     )
     
     def handle_noargs(self, host=None, handler=None, core=None,
-            swap_core=None, **kwargs):
-        if (None, None, None, None) == (host, handler, core, swap_core):
+            swap_core=None, core_admin=None, **kwargs):
+        if (None, None, None, None, None) == (host, handler, core, swap_core, core_admin):
+            """
+            If any args are passed, all args are required, otherwise we'll just
+            use the config.
+            """
             from brushfire.core.settings import configuration as conf
             
             method = conf.get('index.method', 'dih')
             if method != 'dih':
                 raise CommandError, "This command only works with the " \
                                     "dataimporthandler (dih) index method"
-            
             host = conf.get('host')
             handler = conf.get('index.dih.handler', '/dataimport')
-            core = conf.get('cores.index')
+            core = conf.get('index.dih.core')
             swap_core = conf.get('index.dih.swap_cores_on_complete', False)
-        import pdb; pdb.set_trace() 
-        reindex.reindex(host, handler, core, swap_core)
+            core_admin = conf.get('cores.admin')
+        
+        reindex.reindex(host, handler, core, swap_core, core_admin, self.stderr)
