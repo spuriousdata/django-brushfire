@@ -52,6 +52,7 @@ class SearchNode(Node):
         self.connector = connector or self.default
         self.subtree_parents = []
         self.negated = negated
+        self._optimized = True
 
     # We need this because of django.db.models.query_utils.Q. Q. __init__() is
     # problematic, but it is a natural Node subclass in all other respects.
@@ -116,6 +117,7 @@ class SearchNode(Node):
         """
         if node in self.children and conn_type == self.connector:
             return
+        self._optimized = False
         if len(self.children) < 2:
             self.connector = conn_type
         if self.connector == conn_type:
@@ -177,8 +179,82 @@ class SearchNode(Node):
         self.negated = obj.negated
         self.children = obj.children
         self.children.append(node)
+        
+    def optimize(self):
+        """
+        This is a basic query optimizer. It's only current ability is to detect
+        multiple filters or excludes acting on the same field at the same level
+        in the node tree and combine them into an __in query. 
+        eg. .exclude(foo='bar').exclude(foo='baz').exclude(foo='bak') becomes
+            .exclude(foo__in=('bar', 'baz', 'bak')
+        """
+        if self._optimized:
+            return
+        new_fields = {}
+        for c in self.children:
+            if not isinstance(c, SearchNode):
+                continue
+            if len(c.children) == 1:
+                k,v = c.children[0]
+                if k.find("__") == -1:
+                    new_field = k+"__in"
+                    if new_fields.get(new_field, None) is None:
+                        new_fields[new_field] = {
+                            "negated": c.negated, 
+                            "values": [v],
+                            "maybe_remove": [c],
+                        }
+                    elif new_fields[new_field]['negated'] == c.negated:
+                        new_fields[new_field]["values"].append(v)
+                        new_fields[new_field]["maybe_remove"].append(c)
+                    else:
+                        """
+                        This really shouldn't happen because you shouldn't be
+                        making a query that says foo is xxx and foo is not yyy,
+                        but just in case i'm crazy, we'll support it.
+                        """
+                        new_fields[new_field] = {
+                            "negated": c.negated, 
+                            "values": [v],
+                            "maybe_remove": [c],
+                        }
+                elif k.endswith("__in"):
+                    if new_fields.get(k, None) is None:
+                       new_fields[k] = {
+                           "negated": c.negated, 
+                           "values": list(v),
+                           "maybe_remove": [c],
+                       }
+                    elif new_fields[k]['negated'] == c.negated:
+                        new_fields[k]['values'].extend(v)
+                        new_fields[k]['maybe_remove'].append(c)
+                    else:
+                       """
+                       see note for same case above.
+                       """
+                       new_fields[k] = {
+                           "negated": c.negated, 
+                           "values": list(v),
+                           "maybe_remove": [c],
+                       }
+                    
+            else:
+                c._optimized = False
+                c.optimize()
+        
+        for k,v in new_fields.items():
+            if v['maybe_remove'] > 1:
+                for c in v['maybe_remove']:
+                    self.children.remove(c)
+                if v['negated']:
+                    self.add(~SQ(**{k:v['values']}), self.connector)
+                else:
+                    self.add(SQ(**{k:v['values']}), self.connector)
+        
+        self._optimized = True
 
     def as_query_string(self, query_fragment_callback):
+        self.optimize()
         result = []
         for child in self.children:
             if hasattr(child, 'as_query_string'):
@@ -537,7 +613,9 @@ class SolrQuery(object):
         if not isinstance(where, SearchNode):
             where = SearchNode()
 
-        if where and ((q.connector != connector and len(q) > 1) or where.negated ^ q.negated ):
+        where.add(q, connector)
+        """
+        if where and ((q.connector != connector and len(q) > 1) or where.negated != q.negated ):
             where.start_subtree(connector)
             subtree = True
         else:
@@ -560,3 +638,4 @@ class SolrQuery(object):
 
         if subtree:
             where.end_subtree()
+        """
