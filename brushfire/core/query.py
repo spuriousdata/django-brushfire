@@ -207,6 +207,14 @@ class BrushfireQuerySet(QuerySet):
         return model
 
     def narrow_group(self, key, values, connector='OR'):
+        """
+        Allows test for `key == ('a' OR 'b' OR 'c')`
+        
+        I actually have no idea why this exists. It seems this creates a
+        slightly less efficient version of key__in=(x,y,z). I'll have to think
+        about this. I'm also not sure about the variable connector. I can't
+        think of a reason you'd do key=('a' AND 'b' AND 'c'). Was I drunk?
+        """
         qs = None
         for v in values:
             if qs is None:
