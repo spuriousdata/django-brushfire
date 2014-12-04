@@ -524,8 +524,10 @@ class SolrQuery(object):
     def rows(self):
         if self.high_mark:
             minrows = self.high_mark
-        elif self.get_querystring() == "*:*":
-            minrows = 10
+        # If you only use narrow() and no filter(), this will set the rows to
+        # 10, which most likely is not what we want
+        #elif self.get_querystring() == "*:*":
+        #    minrows = 10
         else:
             minrows = self.get_count()
         return minrows - self.start()
