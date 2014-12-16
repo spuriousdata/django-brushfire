@@ -168,6 +168,7 @@ class BrushfireQuerySet(QuerySet):
     def get_stats(self, force=False):
         if not self.stats or force:
             q = self.query.clone()
+            q.set_limits(high=0)
             self._cache_response(q.run(), updateonly='stats')
         stats = {}
         for field in self.stats['stats_fields'].keys():
