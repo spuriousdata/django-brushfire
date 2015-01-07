@@ -16,7 +16,7 @@ from brushfire.core.driver.solr import *
 from brushfire.core.settings import configuration as conf
 from brushfire.utils import smart_quote_string
 from brushfire.core.types import FRange, GroupedFRange
-from brushfire.exceptions import BrushfireException
+from brushfire.core.exceptions import BrushfireException
 
 QUERY_TERMS = set([
     'exact', 'contains', 'gt', 'gte', 'lt', 'lte', 'in',
