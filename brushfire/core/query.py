@@ -262,6 +262,9 @@ class BrushfireQuerySet(QuerySet):
             clone.allow_non_model_fields = True
             clone.query.add_fields("%s:%s" % (k,v))
         return clone
+    
+    def frange_group(self, group):
+        self.query.add_frange_group(group)
         
     def get(self, *args, **kwargs):
         return self.filter(*args, **kwargs)[0]

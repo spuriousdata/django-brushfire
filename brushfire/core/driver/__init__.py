@@ -15,7 +15,8 @@ except ImportError:
 from brushfire.core.driver.solr import *
 from brushfire.core.settings import configuration as conf
 from brushfire.utils import smart_quote_string
-from brushfire.core.types import FRange
+from brushfire.core.types import FRange, GroupedFRange
+from brushfire.exceptions import BrushfireException
 
 QUERY_TERMS = set([
     'exact', 'contains', 'gt', 'gte', 'lt', 'lte', 'in',
@@ -359,7 +360,15 @@ class SolrQuery(object):
         s.where = SearchNode._from_serial(dct.pop('where'))
         s.fq = SearchNode._from_serial(dct.pop('fq'))
         if dct.get('frange', False):
-            s.frange = [FRange(l=x['l'], u=x['u'], func=x['func']) for x in dct.pop('frange')]
+            s.frange = []
+            for x in dct.pop('frange'):
+                if x.get('func', None) is not None:
+                    s.append(FRange(func=x['func'], l=x['l'], u=x['u']))
+                elif x.get('franges', None) is not None:
+                    s.append(GroupedFRange._from_serial(x))
+                else:
+                    # This shouldn't happen
+                    pass
         for k, v in dct.items():
             setattr(s, k, v)
         return s
@@ -399,6 +408,12 @@ class SolrQuery(object):
 
     def add_frange(self, l, u, func):
         self.frange.append(FRange(l=l, u=u, func=func))
+        return self
+    
+    def add_frange_group(self, frs):
+        if not isinstance(frs, GroupedFRange):
+            raise BrushfireException("Expected type(GroupedFRange) got type(%s)" % type(frs))
+        self.frange.append(frs)
         return self
 
     def clear_facets(self):
