@@ -1,5 +1,4 @@
 import json
-from brushfire.core.driver import SQ
 
 class FRange(object):
     def __init__(self, func, l=None, u=None):
@@ -23,7 +22,7 @@ class FRange(object):
         return self.__dict__
     
 class GroupedFRange(object):
-    def __init__(self, franges=[], connector=SQ.OR):
+    def __init__(self, franges=[], connector='OR'):
         self.connector = connector
         self.franges = franges
         
