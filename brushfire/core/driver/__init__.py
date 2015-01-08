@@ -363,9 +363,9 @@ class SolrQuery(object):
             s.frange = []
             for x in dct.pop('frange'):
                 if x.get('func', None) is not None:
-                    s.append(FRange(func=x['func'], l=x['l'], u=x['u']))
+                    s.frange.append(FRange(func=x['func'], l=x['l'], u=x['u']))
                 elif x.get('franges', None) is not None:
-                    s.append(GroupedFRange._from_serial(x))
+                    s.frange.append(GroupedFRange._from_serial(x))
                 else:
                     # This shouldn't happen
                     pass
