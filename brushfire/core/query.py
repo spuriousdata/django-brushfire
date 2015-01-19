@@ -16,7 +16,7 @@ class ModelLookalikeObject(object):
         return None
 
 class BrushfireQuerySet(QuerySet):
-    def __init__(self, model, query=None, using=None, allow_non_model_fields=False):
+    def __init__(self, model, query=None, using=None, hints=None, allow_non_model_fields=False, **kwargs):
         super(BrushfireQuerySet, self).__init__(model, query, using)
         self.query = query or SolrQuery(model)
         self.facet_counts = None
