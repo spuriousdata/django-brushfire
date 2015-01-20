@@ -1,3 +1,4 @@
+from itertools import chain
 import inspect
 from brushfire.core.query import BrushfireQuerySet
 from brushfire.core.exceptions import *
@@ -19,8 +20,6 @@ logger = logging.getLogger('brushfire.core')
 
 class BooleanField(models.BooleanField):
     pass
-
-# BinaryField
 
 # Numeric Fields
 class IntegerField(models.IntegerField):
@@ -104,7 +103,9 @@ class BrushfireManager(object):
 class BrushfireModelBase(type):
     def __new__(cls, name, bases, attrs):
         new_class = super(BrushfireModelBase, cls).__new__(cls, name, bases, attrs)
+        
         parents = [b for b in bases if isinstance(b, BrushfireModelBase)]
+
         module = attrs.pop('__module__')
         attr_meta = attrs.pop('Meta', None)
         if not attr_meta:
@@ -129,20 +130,63 @@ class BrushfireModelBase(type):
                 'DoesNotExist',
                 subclass_exception(
                     str('DoesNotExist'),
-                    tuple(x.DoesNotExist for x in parents 
-                        if hasattr(x, '_meta') and 
-                            not x._meta.abstract) or (ObjectDoesNotExist,),
+                    (ObjectDoesNotExist,),
                     module,
                     attached_to=new_class))
         new_class.add_to_class(
                 'MultipleObjectsReturned',
                 subclass_exception(
                     str('MultipleObjectsReturned'),
-                    tuple(x.DoesNotExist for x in parents 
-                        if hasattr(x, '_meta') and 
-                            not x._meta.abstract) or (MultipleObjectsReturned,),
+                    (MultipleObjectsReturned,),
                     module,
                     attached_to=new_class))
+
+        if new_class._meta.proxy:
+            raise BrushfireException, "BrushfireModels proxies not allowed."
+                
+        # add attributes to class
+        for obj_name, obj in attrs.items():
+            new_class.add_to_class(obj_name, obj)
+                
+        new_fields = chain(
+                new_class._meta.local_fields,
+                new_class._meta.local_many_to_many,
+                new_class._meta.virtual_fields
+        )
+        field_names =  {f.name for f in new_fields}
+        
+        new_class._meta.concrete_model = new_class
+        
+        # Do the appropriate setup for any model parents.
+        for base in parents:
+            if not hasattr(base, '_meta'):
+                # Things without _meta aren't functional models, so they're
+                # uninteresting parents.
+                continue
+
+            parent_fields = base._meta.local_fields + base._meta.local_many_to_many
+            # Check for clashes between locally declared fields and those
+            # on the base classes (we cannot handle shadowed fields at the
+            # moment).
+            for field in parent_fields:
+                if field.name in field_names:
+                    raise FieldError(
+                        'Local field %r in class %r clashes '
+                        'with field of similar name from '
+                        'base class %r' % (field.name, name, base.__name__)
+                    )
+            # Inherit virtual fields (like GenericForeignKey) from the parent
+            # class
+            for field in base._meta.virtual_fields:
+                if base._meta.abstract and field.name in field_names:
+                    raise FieldError(
+                        'Local field %r in class %r clashes '
+                        'with field of similar name from '
+                        'abstract base class %r' % (field.name, name, base.__name__)
+                    )
+                new_class.add_to_class(field.name, copy.deepcopy(field))
+
+        # Keep this stuff last
         new_class._prepare()
         # ModelBase calls this, not sure what it does or if we need it here. Need to investigate further.
         #new_class._meta.apps.register_model(new_class._meta.app_label, new_class)
@@ -183,4 +227,3 @@ class BrushfireModel(six.with_metaclass(BrushfireModelBase)):
     def __init__(self, *args, **kwargs):
         for k,v in kwargs.items():
             setattr(self, k, v)
-    
