@@ -108,6 +108,9 @@ class BrushfireQuerySet(QuerySet):
         clone.query.set_fields(*fields)
         return clone
 
+    def none(self):
+        return self._clone(BrushfireEmptyQuerySet)   
+
     def _cache_response(self, results, updateonly=[]):
         if updateonly:
             if type(updateonly) not in (list, tuple, set):
@@ -323,6 +326,21 @@ class BrushfireValuesObjectQuerySet(BrushfireValuesQuerySet):
                 self.__dict__.update(dct)
         return DictObject(d)
 
+class BrushfireEmptyQuerySet(BrushfireQuerySet):
+    def __len__(self):
+        return 0
+    
+    def _cache_response(self, results, updateonly=[]):
+        self.docs = {}
+        self.facet_counts = {}
+        self.term_vectors = []
+        self.stats = {}
+        
+    def iterator(self):
+        self._cache_response(None)
+        for x in []:
+            yield self.postprocess_result(x)
+    
 ################################################################################
 #
 #                                   Helpers
