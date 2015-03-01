@@ -193,13 +193,13 @@ class BrushfireQuerySet(QuerySet):
         model = self.model(**r)
         if self.allow_non_model_fields or self.term_vectors:
             # self.term_vectors implys allow_non_model_fields
-            m = ModelLookalikeObject()
-            m.__dict__.update(model.__dict__)
+            #m = ModelLookalikeObject()
+            model.__dict__.update(model.__dict__)
             nmf = set(result.keys()) - set(['foo'] + [x.name for x in self.query.get_meta().fields])
             r = {k:result[k] for k in nmf}
-            m.__dict__.update(r)
-            m.pk = model.pk
-            model = m
+            model.__dict__.update(r)
+            model.pk = model.pk
+            #model = m
             if self.term_vectors:
                 if not self.term_vector_response:
                     self.get_term_vectors()
