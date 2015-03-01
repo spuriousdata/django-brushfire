@@ -130,7 +130,8 @@ class Solr(object):
 
         if len(url.rightside) > URL_LENGTH_MAX:
             logger.debug("Requesting[POST] %s with body: %s", url.urlpart, url.pretty_qspart)
-            resp = requests.post(url.urlpart, data=url.query_params, headers={'content-type': 'application/x-www-form-urlencoded'})
+            resp = requests.post(url.urlpart, data=url.query_params, 
+                    headers={'content-type': 'application/x-www-form-urlencoded'})
             if resp.status_code != 200:
                 logger.debug("Method: POST")
                 logger.debug("url: %s", resp.url)
