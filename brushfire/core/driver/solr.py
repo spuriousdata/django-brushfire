@@ -3,6 +3,7 @@ import logging
 import re
 from urllib import  urlencode as e
 from urlparse import parse_qsl as d
+from brushfire.utils import smart_quote_string
 
 URL_LENGTH_MAX = 1024
 DEFAULT = 0xDEFA17
@@ -96,8 +97,14 @@ class Solr(object):
             query_params += [('stats.field',x) for x in sfl]
             query_params += [('stats.facet',x) for x in sft]
         if query.get('facet'):
-            ff = query.pop('facet.fields')
-            query_params += [('facet.field',x) for x in ff]
+            if query.get('facet.fields'):
+                ff = query.pop('facet.fields')
+                query_params += [('facet.field',x) for x in ff]
+            if query.get('facet.intervals'):
+                fi = query.pop('facet.intervals')
+                for field in fi.keys():
+                    query_params.append(('facet.interval', field))
+                    query_params += [x for x in fi[field]]
         if query.get('frange') or type(query.get('frange')) in (list, tuple):
             fr = query.pop('frange')
             query_params += [('fq',str(x)) for x in fr]
@@ -153,7 +160,7 @@ class Solr(object):
 
     def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
                handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, 
-               sort=[], facet=[], fq=None, frange=[], stats=[], stats_facets=[], **kwargs):
+               sort=[], facet=[], fq=None, frange=[], stats=[], stats_facets=[], facet_intervals={}, **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
         if core == DEFAULT:
@@ -191,6 +198,22 @@ class Solr(object):
                 'facet':'on',
                 'facet.fields':facet,
             })
+            
+        if facet_intervals:
+            fi = {}
+            for field in facet_intervals.keys():
+                fi[field] = [] 
+                for key in facet_intervals[field].keys():
+                    #f.monthly_views.facet.interval.set
+                    f = 'f.%s.facet.interval.set' % field
+                    k = "{!key=%s}" % smart_quote_string(key)
+                    i = "%s%s" % (k, facet_intervals[field][key])
+                    fi[field].append((f, i))
+            q.update({
+                'facet':'on',
+                'facet.intervals': fi,
+            })
+            
         if stats:
             q.update({
                 'stats':'on',

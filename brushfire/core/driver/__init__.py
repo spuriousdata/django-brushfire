@@ -97,6 +97,7 @@ class SolrQuery(object):
         self.fq = SearchNode()
         self.ordering = []
         self.facets = []
+        self.facet_intervals = {}
         self.stats = []
         self.stats_facets = []
         self.fields = ['*', 'score']
@@ -183,6 +184,12 @@ class SolrQuery(object):
         self.facets += fields
         return self
 
+    def add_facet_interval(self, field, key, interval):
+        if self.facet_intervals.get(field, None) is None:
+            self.facet_intervals[field] = {}
+        self.facet_intervals[field][key] = interval
+        return self
+    
     def clear_stats(self):
         self.stats = []
         return self
@@ -214,6 +221,7 @@ class SolrQuery(object):
         q.fq = copy.deepcopy(self.fq)
         q.ordering = self.ordering[:]
         q.facets = self.facets[:]
+        q.facet_intervals = copy.deepcopy(self.facet_intervals)
         q.stats = self.stats[:]
         q.stats_facets = self.stats_facets[:]
         q.fields = self.fields[:]
@@ -283,6 +291,7 @@ class SolrQuery(object):
             'fields':','.join(self.fields), 
             'sort':self.ordering,
             'facet':self.facets,
+            'facet_intervals':self.facet_intervals,
             'stats':self.stats,
             'stats_facets':self.stats_facets,
             'annotations':self.annotations,

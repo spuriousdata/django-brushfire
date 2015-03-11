@@ -65,6 +65,11 @@ class BrushfireQuerySet(QuerySet):
         clone = self._clone()
         clone.query.add_facets(*fields)
         return clone
+    
+    def facet_interval(self, field, key, interval):
+        clone = self._clone()
+        clone.query.add_facet_interval(field, key, interval)
+        return clone
 
     def tf(self, *fields):
         """shortcut for term_frequency()"""
@@ -135,7 +140,15 @@ class BrushfireQuerySet(QuerySet):
         ff = self.facet_counts.get('facet_fields', {})
         for key in ff.keys():
             ret[key] = OrderedDict(zip(ff[key][::2], ff[key][1::2]))
+        fi = self.facet_counts.get('facet_intervals', {})
         return ret
+    
+    def get_facet_intervals(self):
+        if not self.facet_counts:
+            q = self.query.clone()
+            q.set_limits(high=1)
+            self._cache_response(q.run())
+        return self.facet_counts.get('facet_intervals', {})
 
     def get_term_vectors(self):
         """
