@@ -1,6 +1,6 @@
 class FRange(object):
     def __init__(self, func, l=None, u=None):
-        assert l or u, \
+        assert l is not None or u is not None, \
                 "At least one of l or u is required"
         self.l = l
         self.u = u
