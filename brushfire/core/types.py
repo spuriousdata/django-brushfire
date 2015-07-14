@@ -10,8 +10,8 @@ class FRange(object):
         
     def __unicode__(self):
         s = u"{!frange "
-        s += "l=%s " % str(self.l) if self.l else ""
-        s += "u=%s" % str(self.u) if self.u else ""
+        s += "l=%s " % str(self.l) if self.l is not None else ""
+        s += "u=%s" % str(self.u) if self.u is not None else ""
         s += "}%s" % self.func
         return s
     
