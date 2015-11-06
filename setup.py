@@ -14,6 +14,7 @@ setup(
     install_requires=[
         'Django >= 1.4.0',
         'requests >= 2.2.1',
+        'six >= 1.10.0',
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
