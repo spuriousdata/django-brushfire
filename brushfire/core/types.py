@@ -16,7 +16,7 @@ class FRange(object):
     def __unicode__(self):
         s = u"{!frange "
         s += "l=%s " % str(self.l) if self.l is not None else ""
-        s += "u=%s" % str(self.u) if self.u is not None else ""
+        s += "u=%s " % str(self.u) if self.u is not None else ""
         s += "v=$%s" % self.qparam_name
         s += "}"
         return s
@@ -27,7 +27,8 @@ class FRange(object):
 
     @property
     def qparam(self):
-        return "%s=%s" % (self.qparam_name, self.func)
+        #return "%s=%s" % (self.qparam_name, self.func)
+        return self.func
 
     def __str__(self):
         return unicode(self).encode('utf-8')
