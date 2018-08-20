@@ -3,6 +3,7 @@ import logging
 import re
 from urllib import  urlencode as e
 from urlparse import parse_qsl as d
+from brushfire.core.types import GroupedFRange
 
 URL_LENGTH_MAX = 1024
 DEFAULT = 0xDEFA17
@@ -102,7 +103,11 @@ class Solr(object):
             fr = query.pop('frange')
             for f in fr:
                 query_params.append(('fq',str(f)))
-                query_params.append((f.qparam_name,f.qparam))
+                if isinstance(f, GroupedFRange):
+                    for gf in f.franges:
+                        query_params.append((gf.qparam_name,gf.qparam))
+                else:
+                    query_params.append((f.qparam_name,f.qparam))
         if isinstance(query.get('annotations'), dict):
             ann = query.pop('annotations')
             if len(ann):
