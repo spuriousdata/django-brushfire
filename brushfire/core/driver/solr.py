@@ -15,7 +15,7 @@ class Url(object):
         self.path = path
         self.params = params
         self.qs = e(params) if len(params) else ''
-    
+
     @property
     def fullurl(self):
         qs = ""
@@ -38,7 +38,7 @@ class Url(object):
     @property
     def qspart(self):
         return self.qs
-    
+
     @property
     def query_params(self):
         return self.params
@@ -100,7 +100,9 @@ class Solr(object):
             query_params += [('facet.field',x) for x in ff]
         if query.get('frange') or type(query.get('frange')) in (list, tuple):
             fr = query.pop('frange')
-            query_params += [('fq',str(x)) for x in fr]
+            for f in fr:
+                query_params.append(('fq',str(f)))
+                query_params.append((f.qparam_name,f.qparam))
         if isinstance(query.get('annotations'), dict):
             ann = query.pop('annotations')
             if len(ann):
@@ -130,7 +132,7 @@ class Solr(object):
 
         if len(url.rightside) > URL_LENGTH_MAX:
             logger.debug("Requesting[POST] %s with body: %s", url.urlpart, url.pretty_qspart)
-            resp = requests.post(url.urlpart, data=url.query_params, 
+            resp = requests.post(url.urlpart, data=url.query_params,
                     headers={'content-type': 'application/x-www-form-urlencoded'})
             if resp.status_code != 200:
                 logger.debug("Method: POST")
@@ -152,8 +154,8 @@ class Solr(object):
 
         return resp
 
-    def search(self, query, fields=DEFAULT, lparams=DEFAULT, 
-               handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False, 
+    def search(self, query, fields=DEFAULT, lparams=DEFAULT,
+               handler=DEFAULT, core=DEFAULT, start=0, rows=DEFAULT, raw=False,
                sort=[], facet=[], fq=None, frange=[], stats=[], stats_facets=[], **kwargs):
         if handler == DEFAULT:
             handler = self.query_handler
@@ -168,7 +170,7 @@ class Solr(object):
 
         # turn ['+foo', '-bar', 'baz'] into "foo asc,bar desc,baz asc"
         sort = ','.join(
-                ["%s asc" % field if direction in (None, '+') else "%s desc" % field 
+                ["%s asc" % field if direction in (None, '+') else "%s desc" % field
                     for direction, field in [
                         Solr.sort_regex.search(x).groups() for x in sort]])
 
@@ -209,8 +211,8 @@ class Solr(object):
             response = self._raw(path, **q)
         except Exception as e:
             logger.exception(e)
-            raise 
-        
+            raise
+
         if raw:
             return response.content
         try:
@@ -224,4 +226,4 @@ if __name__ == '__main__':
     l.setLevel(logging.DEBUG)
     l.addHandler(logging.StreamHandler())
     solr = Solr("http://localhost/solr")
-    import pdb; pdb.set_trace() 
+    import pdb; pdb.set_trace()
