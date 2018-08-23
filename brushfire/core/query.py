@@ -109,7 +109,7 @@ class BrushfireQuerySet(QuerySet):
         return clone
 
     def none(self):
-        return self._clone(BrushfireEmptyQuerySet)   
+        return self._clone(BrushfireEmptyQuerySet)
 
     def _cache_response(self, results, updateonly=[]):
         if updateonly:
@@ -213,7 +213,7 @@ class BrushfireQuerySet(QuerySet):
     def narrow_group(self, key, values, connector='OR'):
         """
         Allows test for `key == ('a' OR 'b' OR 'c')`
-        
+
         I actually have no idea why this exists. It seems this creates a
         slightly less efficient version of key__in=(x,y,z). I'll have to think
         about this. I'm also not sure about the variable connector. I can't
@@ -244,31 +244,34 @@ class BrushfireQuerySet(QuerySet):
         else:
             clone.query.add_q(SQ(*args, **kwargs), property='fq')
         return clone
-    
+
     def frange(self, l=None, u=None, add_to_fl=True, **kwargs):
-        logger.debug("Called frange with (l=%s, u=%s, add_to_fl=%s, %r)", 
+        logger.debug("Called frange with (l=%s, u=%s, add_to_fl=%s, %r)",
                      str(l), str(u), add_to_fl, kwargs)
         if kwargs:
             assert self.query.can_filter(), \
                     "Cannot filter a query once a slice has been taken."
         assert l is not None or u is not None, "At least one of l or u is required."
-        
+
         clone = self._clone()
-        
+
         if len(kwargs.keys()) > 1:
             raise BrushfireException, "frange must be called once for each key/value pair"
         k,v = kwargs.items()[0]
-        
+
         clone.query.add_frange(l=l, u=u, func=v)
-            
+
         if add_to_fl:
             clone.allow_non_model_fields = True
             clone.query.add_fields("%s:%s" % (k,v))
         return clone
-    
+
     def frange_group(self, group):
-        self.query.add_frange_group(group)
-        
+        clone = self._clone()
+        assert self.query.can_filter(), "Cannot filter a query once a slice has been taken."
+        clone.query.add_frange_group(group)
+        return clone
+
     def get(self, *args, **kwargs):
         return self.filter(*args, **kwargs)[0]
 
@@ -329,18 +332,18 @@ class BrushfireValuesObjectQuerySet(BrushfireValuesQuerySet):
 class BrushfireEmptyQuerySet(BrushfireQuerySet):
     def __len__(self):
         return 0
-    
+
     def _cache_response(self, results, updateonly=[]):
         self.docs = {}
         self.facet_counts = {}
         self.term_vectors = []
         self.stats = {}
-        
+
     def iterator(self):
         self._cache_response(None)
         for x in []:
             yield self.postprocess_result(x)
-    
+
 ################################################################################
 #
 #                                   Helpers
