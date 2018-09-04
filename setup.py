@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='django-brushfire',
-    version='0.1.0',
+    version='0.1.2',
     author="Mike O'Malley",
     author_email='spuriousdata@gmail.com',
     description='Solr-only replacement for Haystack.',
