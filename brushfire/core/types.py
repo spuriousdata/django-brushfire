@@ -30,6 +30,10 @@ class FRange(object):
         #return "%s=%s" % (self.qparam_name, self.func)
         return self.func
 
+    @staticmethod
+    def reset():
+        FRange.qid = 0
+
     def __str__(self):
         return unicode(self).encode('utf-8')
 

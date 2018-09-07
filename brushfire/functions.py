@@ -126,7 +126,7 @@ def docfreq(field, word):
     return 'docfreq(%s, %s)' % (field, quote_string(word))
 
 def termfreq(field, word):
-    return 'termfreq(%s, %s)' % (field, quote_string(word)) 
+    return 'termfreq(%s, %s)' % (field, quote_string(word))
 
 def totaltermfreq(field, word):
     return 'totaltermfreq(%s, %s)' % (field, quote_string(word))
