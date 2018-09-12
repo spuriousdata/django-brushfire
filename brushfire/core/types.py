@@ -41,9 +41,9 @@ class FRange(object):
         return self.__dict__
 
 class GroupedFRange(object):
-    def __init__(self, franges=[], connector='OR'):
+    def __init__(self, franges=None, connector='OR'):
         self.connector = connector
-        self.franges = franges
+        self.franges = franges or []
 
     def __unicode__(self):
         connector = u" %s " % self.connector
